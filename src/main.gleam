@@ -3,10 +3,9 @@ import espresso/espresso
 import espresso/espresso/response.{json, send}
 import espresso/espresso/router.{get, post}
 import gleam/http/request.{Request}
-import gleam/bit_string
 import gleam/list
 import gleam/result
-import gleam/io
+import gleam/json
 
 pub fn main() {
   let router =
@@ -34,26 +33,15 @@ pub fn main() {
     )
     |> post(
       "/json",
-      fn(req: Request(BitString)) {
-        request.map(
-          req,
-          fn(body) {
-            body
-            |> bit_string.to_string()
-            |> io.debug()
-            |> result.unwrap("")
-            |> io.debug()
-            |> cat.decode()
-            |> io.debug()
-
-            body
-          },
-        )
-
-        "dummy"
-        |> cat.new()
-        |> cat.encode()
-        |> json()
+      {
+        use req <- cat.middleware
+        case req.body {
+          Ok(c) ->
+            c
+            |> cat.encode()
+            |> json()
+          Error(_err) -> send(400, "Invalid cat")
+        }
       },
     )
 

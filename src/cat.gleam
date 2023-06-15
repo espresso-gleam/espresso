@@ -1,6 +1,11 @@
 import gleam/dynamic
 import gleam/json
 import gleam/option.{None, Option}
+import gleam/http/request.{Request}
+import gleam/http/response.{Response}
+import gleam/http/service.{Service}
+import gleam/bit_string
+import gleam/result
 
 pub type Cat {
   Cat(name: String, lives: Int, flaws: Option(String), nicknames: List(String))
@@ -30,4 +35,21 @@ pub fn decode(body: String) {
     )
 
   json.decode(from: body, using: cat_decoder)
+}
+
+pub fn middleware(
+  handler: Service(Result(Cat, json.DecodeError), a),
+) -> Service(BitString, a) {
+  fn(req: Request(BitString)) -> Response(a) {
+    request.map(
+      req,
+      fn(body) {
+        body
+        |> bit_string.to_string()
+        |> result.unwrap("")
+        |> decode()
+      },
+    )
+    |> handler()
+  }
 }
