@@ -37,7 +37,7 @@ pub fn decode(body: String) {
   json.decode(from: body, using: cat_decoder)
 }
 
-pub fn middleware(
+pub fn decoder(
   handler: Service(Result(Cat, json.DecodeError), a),
 ) -> Service(BitString, a) {
   fn(req: Request(BitString)) -> Response(a) {

@@ -5,7 +5,6 @@ import espresso/espresso/router.{get, post}
 import gleam/http/request.{Request}
 import gleam/list
 import gleam/result
-import gleam/json
 
 pub fn main() {
   let router =
@@ -34,7 +33,7 @@ pub fn main() {
     |> post(
       "/json",
       {
-        use req <- cat.middleware
+        use req <- cat.decoder
         case req.body {
           Ok(c) ->
             c
