@@ -1,10 +1,11 @@
 import cat
 import espresso/espresso
 import espresso/espresso/response.{json, send}
-import espresso/espresso/router.{get}
+import espresso/espresso/router.{get, post}
 import gleam/http/request.{Request}
 import gleam/list
 import gleam/result
+import gleam/io
 
 pub fn main() {
   let router =
@@ -22,6 +23,18 @@ pub fn main() {
           |> result.unwrap("")
 
         name
+        |> cat.new()
+        |> cat.encode()
+        |> json()
+      },
+    )
+    |> post(
+      "/json",
+      fn(req: Request(String)) {
+        req
+        |> request.map(fn(body) { cat.decode(body) })
+
+        "dummy"
         |> cat.new()
         |> cat.encode()
         |> json()

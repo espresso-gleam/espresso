@@ -29,9 +29,18 @@ pub fn get(
   Router(handlers: handlers)
 }
 
+pub fn post(
+  router: Router(a, b),
+  route: String,
+  handler: fn(Request(a)) -> Response(b),
+) -> Router(a, b) {
+  let handlers = map.insert(router.handlers, Post(route), handler)
+  Router(handlers: handlers)
+}
+
 pub fn handle(
-  router: Router(a, BitBuilder),
-  req: Request(a),
+  router: Router(BitString, BitBuilder),
+  req: Request(BitString),
 ) -> Response(BitBuilder) {
   let route = req_to_route(req)
   let handler = map.get(router.handlers, route)

@@ -1,4 +1,5 @@
-import gleam/json.{array, int, null, object, string}
+import gleam/dynamic
+import gleam/json
 import gleam/option.{None, Option}
 
 pub type Cat {
@@ -10,10 +11,23 @@ pub fn new(name: String) -> Cat {
 }
 
 pub fn encode(cat: Cat) {
-  object([
-    #("name", string(cat.name)),
-    #("lives", int(cat.lives)),
-    #("flaws", null()),
-    #("nicknames", array(cat.nicknames, of: string)),
+  json.object([
+    #("name", json.string(cat.name)),
+    #("lives", json.int(cat.lives)),
+    #("flaws", json.null()),
+    #("nicknames", json.array(cat.nicknames, of: json.string)),
   ])
+}
+
+pub fn decode(body: String) {
+  let cat_decoder =
+    dynamic.decode4(
+      Cat,
+      dynamic.field("name", of: dynamic.string),
+      dynamic.field("lives", of: dynamic.int),
+      dynamic.field("flaws", of: dynamic.optional(dynamic.string)),
+      dynamic.field("nicknames", of: dynamic.list(dynamic.string)),
+    )
+
+  json.decode(from: body, using: cat_decoder)
 }
