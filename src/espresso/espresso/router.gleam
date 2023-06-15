@@ -12,8 +12,8 @@ pub type Route {
   Delete(String)
 }
 
-pub type Router(a, b) {
-  Router(handlers: Map(Route, fn(Request(a)) -> Response(b)))
+pub type Router {
+  Router(handlers: Map(Route, fn(Request(BitString)) -> Response(BitBuilder)))
 }
 
 pub fn new() {
@@ -21,27 +21,24 @@ pub fn new() {
 }
 
 pub fn get(
-  router: Router(a, b),
+  router: Router,
   route: String,
-  handler: fn(Request(a)) -> Response(b),
-) -> Router(a, b) {
+  handler: fn(Request(BitString)) -> Response(BitBuilder),
+) -> Router {
   let handlers = map.insert(router.handlers, Get(route), handler)
   Router(handlers: handlers)
 }
 
 pub fn post(
-  router: Router(a, b),
+  router: Router,
   route: String,
-  handler: fn(Request(a)) -> Response(b),
-) -> Router(a, b) {
+  handler: fn(Request(BitString)) -> Response(BitBuilder),
+) -> Router {
   let handlers = map.insert(router.handlers, Post(route), handler)
   Router(handlers: handlers)
 }
 
-pub fn handle(
-  router: Router(BitString, BitBuilder),
-  req: Request(BitString),
-) -> Response(BitBuilder) {
+pub fn handle(router: Router, req: Request(BitString)) -> Response(BitBuilder) {
   let route = req_to_route(req)
   let handler = map.get(router.handlers, route)
 

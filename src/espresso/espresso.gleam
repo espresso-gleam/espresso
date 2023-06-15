@@ -1,5 +1,4 @@
 import espresso/espresso/router.{Router, handle}
-import gleam/bit_builder.{BitBuilder}
 import gleam/erlang/os
 import gleam/erlang/process
 import gleam/http/cowboy
@@ -17,7 +16,7 @@ pub fn get_port() -> Int {
 pub external fn exit(i32) -> Nil =
   "Elixir.Process" "exit/1"
 
-pub fn start(r: Router(String, BitBuilder)) {
+pub fn start(r: Router) {
   let port = get_port()
   case cowboy.start(fn(request) { handle(r, request) }, on_port: port) {
     Ok(_) -> process.sleep_forever()
