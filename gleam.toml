@@ -13,6 +13,7 @@ description = "A Gleam project"
 gleam_stdlib = "~> 0.28"
 gleam_cowboy = "~> 0.5"
 gleam_json = "~> 0.5"
+gleam_pgo = "~> 0.4"
 
 [dev-dependencies]
 gleeunit = "~> 0.10"

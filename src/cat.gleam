@@ -37,6 +37,16 @@ pub fn decode(body: String) {
   json.decode(from: body, using: cat_decoder)
 }
 
+pub fn from_db() {
+  dynamic.decode4(
+    Cat,
+    dynamic.element(0, dynamic.string),
+    dynamic.element(1, dynamic.int),
+    dynamic.element(2, dynamic.optional(dynamic.string)),
+    dynamic.element(3, dynamic.list(dynamic.string)),
+  )
+}
+
 pub fn decoder(
   handler: Service(Result(Cat, json.DecodeError), a),
 ) -> Service(BitString, a) {
