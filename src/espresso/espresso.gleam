@@ -1,4 +1,4 @@
-import express/express/router.{Router, handle}
+import espresso/espresso/router.{Router, handle}
 import gleam/bit_builder.{BitBuilder}
 import gleam/erlang/os
 import gleam/erlang/process

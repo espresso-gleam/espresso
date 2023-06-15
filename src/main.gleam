@@ -1,7 +1,7 @@
 import cat
-import express/express
-import express/express/response.{json, send}
-import express/express/router.{get}
+import espresso/espresso
+import espresso/espresso/response.{json, send}
+import espresso/espresso/router.{get}
 import gleam/http/request.{Request}
 import gleam/list
 import gleam/result
@@ -28,5 +28,5 @@ pub fn main() {
       },
     )
 
-  express.start(router)
+  espresso.start(router)
 }

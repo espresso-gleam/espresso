@@ -1,7 +1,7 @@
-# express
+# espresso
 
-[![Package Version](https://img.shields.io/hexpm/v/express)](https://hex.pm/packages/express)
-[![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/express/)
+[![Package Version](https://img.shields.io/hexpm/v/espresso)](https://hex.pm/packages/espresso)
+[![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/espresso/)
 
 A Gleam project
 
@@ -18,7 +18,7 @@ gleam shell # Run an Erlang shell
 If available on Hex this package can be added to your Gleam project:
 
 ```sh
-gleam add express
+gleam add espresso
 ```
 
-and its documentation can be found at <https://hexdocs.pm/express>.
+and its documentation can be found at <https://hexdocs.pm/espresso>.
