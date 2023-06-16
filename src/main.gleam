@@ -7,10 +7,8 @@ import gleam/http/request.{Request}
 import gleam/io
 import gleam/json
 import gleam/list
-import gleam/map
 import gleam/option.{None, Some}
 import gleam/pgo
-import espresso/cowboy/cowboy
 
 pub fn main() {
   let db =

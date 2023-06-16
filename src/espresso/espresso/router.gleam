@@ -1,6 +1,5 @@
 import gleam/bit_builder.{BitBuilder}
 import gleam/http
-import espresso/cowboy/cowboy
 import gleam/http/request.{Request}
 import gleam/http/response.{Response}
 import gleam/http/service.{Middleware, Service}

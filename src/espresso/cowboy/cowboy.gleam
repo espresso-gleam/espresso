@@ -20,11 +20,14 @@ pub external type CowboyRouter
 pub type MethodPath =
   #(String, String)
 
+pub type Bindings =
+  List(#(String, Dynamic))
+
 type CowboyRoutes =
   List(
     #(
       atom.Atom,
-      List(#(Dynamic, ModuleName, fn(CowboyRequest) -> CowboyRequest)),
+      List(#(Dynamic, ModuleName, fn(CowboyRequest, Bindings) -> CowboyRequest)),
     ),
   )
 
@@ -55,7 +58,7 @@ pub fn router(routes: Routes) -> CowboyRouter {
     #(
       dynamic.from(underscore),
       erlang_module_name(),
-      service_to_handler(fn(req) { response.send(404, "not found yo") }),
+      service_to_handler(fn(_req) { response.send(404, "not found yo") }),
     ),
   ]
 
@@ -153,8 +156,9 @@ fn cowboy_format_headers(headers: List(Header)) -> Map(String, Dynamic) {
 
 fn service_to_handler(
   service: Service(BitString, BitBuilder),
-) -> fn(CowboyRequest) -> CowboyRequest {
-  fn(request) {
+) -> fn(CowboyRequest, Bindings) -> CowboyRequest {
+  fn(request, bindings) {
+    // do stuff with the bindings in the service fn
     let #(body, request) = get_body(request)
     let response =
       service(Request(
