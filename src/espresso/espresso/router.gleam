@@ -2,6 +2,7 @@ import gleam/bit_builder.{BitBuilder}
 import gleam/http
 import gleam/http/request.{Request}
 import gleam/http/response.{Response}
+import gleam/http/service.{Middleware, Service}
 import gleam/map.{Map}
 
 pub type Route {
@@ -12,38 +13,43 @@ pub type Route {
   Delete(String)
 }
 
-pub type Router {
-  Router(handlers: Map(Route, fn(Request(BitString)) -> Response(BitBuilder)))
+pub type Router(req, res) {
+  Router(middleware: Middleware(req, res, BitString, BitBuilder), handlers: Map(Route, Service(req, res)))
 }
 
-pub fn new() {
-  Router(handlers: map.new())
+pub fn passthrough_middleware() {
+  fn (a) { a }
+}
+
+pub fn new(middleware: Middleware(req, res, BitString, BitBuilder)) {
+  Router(middleware: middleware, handlers: map.new())
 }
 
 pub fn get(
-  router: Router,
+  router: Router(req, res),
   route: String,
-  handler: fn(Request(BitString)) -> Response(BitBuilder),
-) -> Router {
+  handler: Service(req, res),
+) -> Router(req, res) {
   let handlers = map.insert(router.handlers, Get(route), handler)
-  Router(handlers: handlers)
+  Router(middleware: router.middleware, handlers: handlers)
 }
 
 pub fn post(
-  router: Router,
+  router: Router(req, res),
   route: String,
-  handler: fn(Request(BitString)) -> Response(BitBuilder),
-) -> Router {
+  handler: Service(req, res),
+) -> Router(req, res) {
   let handlers = map.insert(router.handlers, Post(route), handler)
-  Router(handlers: handlers)
+  Router(middleware: router.middleware, handlers: handlers)
 }
 
-pub fn handle(router: Router, req: Request(BitString)) -> Response(BitBuilder) {
+pub fn handle(router: Router(req, res), req: Request(BitString)) -> Response(BitBuilder) {
   let route = req_to_route(req)
   let handler = map.get(router.handlers, route)
 
   case handler {
-    Ok(handler) -> handler(req)
+    Ok(handler) ->
+      router.middleware(handler)(req)
     Error(_) ->
       404
       |> response.new()

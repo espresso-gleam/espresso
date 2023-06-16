@@ -24,7 +24,7 @@ pub fn main() {
     )
 
   let router =
-    router.new()
+    router.new(router.passthrough_middleware())
     |> get("/", fn(_req: Request(BitString)) { send(202, "Main Route") })
     |> get(
       "/cats",
