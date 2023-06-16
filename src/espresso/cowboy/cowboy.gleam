@@ -24,15 +24,15 @@ pub type Bindings =
   List(#(String, Dynamic))
 
 type CowboyRoutes =
-  List(
-    #(
-      atom.Atom,
-      List(#(Dynamic, ModuleName, fn(CowboyRequest, Bindings) -> CowboyRequest)),
-    ),
-  )
+  List(#(atom.Atom, List(#(Dynamic, Dynamic, Dynamic))))
+
+pub type Route {
+  ServiceRoute(Service(BitString, BitBuilder))
+  RouterRoute(Routes)
+}
 
 pub type Routes =
-  Map(MethodPath, Service(BitString, BitBuilder))
+  Map(String, Route)
 
 external type ModuleName
 
@@ -48,17 +48,29 @@ pub fn router(routes: Routes) -> CowboyRouter {
   let cowboy_routes =
     routes
     |> map.to_list()
-    |> list.map(fn(route) {
-      let #(method_path, service) = route
-      let #(_method, path) = method_path
-      #(dynamic.from(path), erlang_module_name(), service_to_handler(service))
+    |> list.map(fn(entry) {
+      let #(path, route) = entry
+      case route {
+        ServiceRoute(service) -> #(
+          dynamic.from(path),
+          dynamic.from(erlang_module_name()),
+          dynamic.from(service_to_handler(service)),
+        )
+        RouterRoute(routes) -> #(
+          dynamic.from(path),
+          dynamic.from(router(routes)),
+          dynamic.from([]),
+        )
+      }
     })
 
   let fallback = [
     #(
       dynamic.from(underscore),
-      erlang_module_name(),
-      service_to_handler(fn(_req) { response.send(404, "not found yo") }),
+      dynamic.from(erlang_module_name()),
+      dynamic.from(service_to_handler(fn(_req) {
+        response.send(404, "not found yo")
+      })),
     ),
   ]
 
