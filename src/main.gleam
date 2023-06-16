@@ -109,6 +109,13 @@ pub fn main() {
         }
       },
     )
+    |> get(
+      "/cats/:cat",
+      fn(req) {
+        io.debug(req)
+        send(200, "this is a cat yeah?")
+      },
+    )
 
   espresso.start(router)
 }

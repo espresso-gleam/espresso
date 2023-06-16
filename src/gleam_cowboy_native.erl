@@ -1,20 +1,24 @@
 -module(gleam_cowboy_native).
 
--export([init/2, start_link/2, read_entire_body/1, router/1]).
+-export([init/2, start_link/2, read_entire_body/1, router/1, module_name/0]).
+
+module_name() ->
+  ?MODULE.
 
 router(Routes) ->
     % print out the routes for debugging
     io:format("Routes: ~p~n", [Routes]),
     cowboy_router:compile(Routes).
 
-start_link(Handler, Port) ->
+start_link(Router, Port) ->
+    io:format("Router: ~p~n", [Router]),
     RanchOptions = #{
         max_connections => 16384,
         num_acceptors => 100,
         socket_opts => [{port, Port}]
     },
     CowboyOptions = #{
-        env => #{dispatch => [{'_', [], [{'_', [], ?MODULE, Handler}]}]},
+        env => #{dispatch => Router},
         stream_handlers => [cowboy_stream_h]
     },
     ranch_listener_sup:start_link(

@@ -9,7 +9,9 @@ import gleam/http/service.{Service}
 import gleam/http/request.{Request}
 import gleam/bit_builder.{BitBuilder}
 import gleam/dynamic.{Dynamic}
+import gleam/erlang/atom
 import gleam/erlang/process.{Pid}
+import espresso/espresso/response
 
 pub external type CowboyRequest
 
@@ -21,44 +23,47 @@ pub type MethodPath =
 type CowboyRoutes =
   List(
     #(
-      String,
-      List(
-        #(String, fn(CowboyRequest) -> CowboyRequest, List(#(Dynamic, Dynamic))),
-      ),
+      atom.Atom,
+      List(#(Dynamic, ModuleName, fn(CowboyRequest) -> CowboyRequest)),
     ),
   )
 
 pub type Routes =
   Map(MethodPath, Service(BitString, BitBuilder))
 
-external fn erlang_router(CowboyRoutes) -> Dynamic =
+external type ModuleName
+
+external fn erlang_module_name() -> ModuleName =
+  "gleam_cowboy_native" "module_name"
+
+external fn erlang_router(CowboyRoutes) -> CowboyRouter =
   "gleam_cowboy_native" "router"
 
-pub fn router(routes: Routes) -> Dynamic {
+pub fn router(routes: Routes) -> CowboyRouter {
+  let underscore = atom.create_from_string("_")
+
   let cowboy_routes =
     routes
     |> map.to_list()
-    |> list.group(by: fn(route) {
-      let #(method_path, _service) = route
-      let #(method, _path) = method_path
-      method
+    |> list.map(fn(route) {
+      let #(method_path, service) = route
+      let #(_method, path) = method_path
+      #(dynamic.from(path), erlang_module_name(), service_to_handler(service))
     })
-    |> map.map_values(fn(_key, routes) {
-      routes
-      |> list.map(fn(route) {
-        let #(method_path, service) = route
-        let #(_method, path) = method_path
-        #(path, service_to_handler(service), [])
-      })
-    })
-    |> map.to_list()
-    |> io.debug()
 
-  erlang_router(cowboy_routes)
+  let fallback = [
+    #(
+      dynamic.from(underscore),
+      erlang_module_name(),
+      service_to_handler(fn(req) { response.send(404, "not found yo") }),
+    ),
+  ]
+
+  erlang_router([#(underscore, list.append(cowboy_routes, fallback))])
 }
 
 external fn erlang_start_link(
-  router: Dynamic,
+  router: CowboyRouter,
   port: Int,
 ) -> Result(Pid, Dynamic) =
   "gleam_cowboy_native" "start_link"
@@ -172,7 +177,7 @@ fn service_to_handler(
 
 // TODO: document
 // TODO: test
-pub fn start(router: Dynamic, on_port number: Int) -> Result(Pid, Dynamic) {
+pub fn start(router: CowboyRouter, on_port number: Int) -> Result(Pid, Dynamic) {
   router
   |> erlang_start_link(number)
 }
