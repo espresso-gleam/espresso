@@ -1,7 +1,7 @@
 import espresso/espresso/router.{Router, handle}
 import gleam/erlang/os
 import gleam/erlang/process
-import gleam/http/cowboy
+import espresso/cowboy/cowboy
 import gleam/int
 import gleam/result
 
