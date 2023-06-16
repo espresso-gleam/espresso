@@ -53,7 +53,7 @@ pub fn main() {
           Ok(result) -> {
             result.rows
             |> json.array(of: cat.encode)
-            |> json()
+            |> response.json()
           }
 
           Error(error) -> {
@@ -92,7 +92,7 @@ pub fn main() {
                   Ok(cat) ->
                     cat
                     |> cat.encode()
-                    |> json()
+                    |> response.json()
                   _ -> send(500, "Invalid cat")
                 }
 
