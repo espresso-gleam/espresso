@@ -1,3 +1,4 @@
+import gleam/io
 import gleam/list
 import gleam/pair
 import gleam/map.{Map}
@@ -14,6 +15,9 @@ pub external type CowboyRequest
 
 pub external type CowboyRouter
 
+pub type MethodPath =
+  #(String, String)
+
 type CowboyRoutes =
   List(
     #(
@@ -24,15 +28,37 @@ type CowboyRoutes =
     ),
   )
 
-external fn erlang_router(CowboyRoutes) -> CowboyRouter =
+pub type Routes =
+  Map(MethodPath, Service(BitString, BitBuilder))
+
+external fn erlang_router(CowboyRoutes) -> Dynamic =
   "gleam_cowboy_native" "router"
 
-pub fn router(routes: CowboyRoutes) -> CowboyRouter {
-  erlang_router(routes)
+pub fn router(routes: Routes) -> Dynamic {
+  let cowboy_routes =
+    routes
+    |> map.to_list()
+    |> list.group(by: fn(route) {
+      let #(method_path, _service) = route
+      let #(method, _path) = method_path
+      method
+    })
+    |> map.map_values(fn(_key, routes) {
+      routes
+      |> list.map(fn(route) {
+        let #(method_path, service) = route
+        let #(_method, path) = method_path
+        #(path, service_to_handler(service), [])
+      })
+    })
+    |> map.to_list()
+    |> io.debug()
+
+  erlang_router(cowboy_routes)
 }
 
 external fn erlang_start_link(
-  handler: fn(CowboyRequest) -> CowboyRequest,
+  router: Dynamic,
   port: Int,
 ) -> Result(Pid, Dynamic) =
   "gleam_cowboy_native" "start_link"
@@ -146,11 +172,7 @@ fn service_to_handler(
 
 // TODO: document
 // TODO: test
-pub fn start(
-  service: Service(BitString, BitBuilder),
-  on_port number: Int,
-) -> Result(Pid, Dynamic) {
-  service
-  |> service_to_handler
+pub fn start(router: Dynamic, on_port number: Int) -> Result(Pid, Dynamic) {
+  router
   |> erlang_start_link(number)
 }
