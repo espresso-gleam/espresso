@@ -1,14 +1,14 @@
 import cat
 import espresso/espresso
+import espresso/espresso/query
 import espresso/espresso/response.{json, send}
 import espresso/espresso/router.{get, post}
 import gleam/http/request.{Request}
-import gleam/list
-import gleam/result
-import gleam/pgo
 import gleam/io
-import gleam/option.{Some}
 import gleam/json
+import gleam/list
+import gleam/option.{None, Some}
+import gleam/pgo
 
 pub fn main() {
   let db =
@@ -29,17 +29,27 @@ pub fn main() {
     |> get(
       "/cats",
       fn(req: Request(BitString)) {
-        let name =
-          req
-          |> request.get_query()
-          |> result.unwrap([])
-          |> list.key_find("name")
-          |> result.unwrap("")
+        let name = query.get(req, "name")
 
-        let sql =
-          "select name, lives, flaws, nicknames from cats where name = $1"
+        let result = case name {
+          Some(name) ->
+            pgo.execute(
+              "select name, lives, flaws, nicknames from cats where name = $1",
+              db,
+              [pgo.text(name)],
+              cat.from_db(),
+            )
 
-        case pgo.execute(sql, db, [pgo.text(name)], cat.from_db()) {
+          None ->
+            pgo.execute(
+              "select name, lives, flaws, nicknames from cats",
+              db,
+              [],
+              cat.from_db(),
+            )
+        }
+
+        case result {
           Ok(result) -> {
             result.rows
             |> json.array(of: cat.encode)
