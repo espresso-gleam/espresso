@@ -14,11 +14,14 @@ pub type Route {
 }
 
 pub type Router(req, res) {
-  Router(middleware: Middleware(req, res, BitString, BitBuilder), handlers: Map(Route, Service(req, res)))
+  Router(
+    middleware: Middleware(req, res, BitString, BitBuilder),
+    handlers: Map(Route, Service(req, res)),
+  )
 }
 
 pub fn passthrough_middleware() {
-  fn (a) { a }
+  fn(a) { a }
 }
 
 pub fn new(middleware: Middleware(req, res, BitString, BitBuilder)) {
@@ -43,13 +46,15 @@ pub fn post(
   Router(middleware: router.middleware, handlers: handlers)
 }
 
-pub fn handle(router: Router(req, res), req: Request(BitString)) -> Response(BitBuilder) {
+pub fn handle(
+  router: Router(req, res),
+  req: Request(BitString),
+) -> Response(BitBuilder) {
   let route = req_to_route(req)
   let handler = map.get(router.handlers, route)
 
   case handler {
-    Ok(handler) ->
-      router.middleware(handler)(req)
+    Ok(handler) -> router.middleware(handler)(req)
     Error(_) ->
       404
       |> response.new()
