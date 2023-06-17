@@ -1,10 +1,9 @@
 import cat
-import espresso/cowboy/cowboy.{Params}
 import espresso/espresso
 import espresso/espresso/query
+import espresso/espresso/request.{Request}
 import espresso/espresso/response.{json, send}
 import espresso/espresso/router.{get, post}
-import gleam/http/request.{Request}
 import gleam/io
 import gleam/json
 import gleam/list
@@ -28,13 +27,10 @@ pub fn main() {
 
   let router =
     router.new(router.passthrough_middleware())
-    |> get(
-      "/",
-      fn(_req: Request(BitString), _params) { send(202, "Main Route") },
-    )
+    |> get("/", fn(_req: Request(BitString)) { send(202, "Main Route") })
     |> get(
       "/cats",
-      fn(req: Request(BitString), _params) {
+      fn(req: Request(BitString)) {
         let name = query.get(req, "name")
 
         let result = case name {
@@ -115,9 +111,9 @@ pub fn main() {
     )
     |> get(
       "/cats/:cat",
-      fn(_req: Request(BitString), params: Params) {
+      fn(req: Request(BitString)) {
         let name =
-          params
+          req.params
           |> list.key_find("cat")
           |> result.unwrap(dynamic.from(""))
           |> dynamic.string()

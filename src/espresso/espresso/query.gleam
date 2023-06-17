@@ -1,4 +1,4 @@
-import gleam/http/request.{Request}
+import espresso/espresso/request.{Request}
 import gleam/list
 import gleam/result
 import gleam/option.{None, Option, Some}

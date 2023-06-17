@@ -3,7 +3,7 @@ import gleam/http
 import espresso/cowboy/cowboy.{
   EspressoMiddleware, EspressoService, RouterRoute, ServiceRoute,
 }
-import gleam/http/request.{Request}
+import espresso/espresso/request.{Request}
 import gleam/http/response.{Response}
 import gleam/map.{Map}
 import gleam/list
@@ -103,12 +103,12 @@ pub fn handle(
   router: Router(req, res),
   routes: Map(Method, EspressoService(req, res)),
 ) -> EspressoService(BitString, BitBuilder) {
-  fn(req: Request(BitString), params) -> Response(BitBuilder) {
+  fn(req: Request(BitString)) -> Response(BitBuilder) {
     let method = req_to_method(req)
     let handler = map.get(routes, method)
 
     case handler {
-      Ok(handler) -> router.middleware(handler)(req, params)
+      Ok(handler) -> router.middleware(handler)(req)
       Error(_) ->
         404
         |> response.new()
