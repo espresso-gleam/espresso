@@ -1,5 +1,5 @@
 import cat
-import espresso/cowboy/cowboy.{Bindings}
+import espresso/cowboy/cowboy.{Params}
 import espresso/espresso
 import espresso/espresso/query
 import espresso/espresso/response.{json, send}
@@ -34,7 +34,7 @@ pub fn main() {
     )
     |> get(
       "/cats",
-      fn(req: Request(BitString), _bindings) {
+      fn(req: Request(BitString), _params) {
         let name = query.get(req, "name")
 
         let result = case name {
@@ -115,7 +115,7 @@ pub fn main() {
     )
     |> get(
       "/cats/:cat",
-      fn(_req: Request(BitString), params: Bindings) {
+      fn(_req: Request(BitString), params: Params) {
         let name =
           params
           |> list.key_find("cat")

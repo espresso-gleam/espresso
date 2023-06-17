@@ -103,12 +103,12 @@ pub fn handle(
   router: Router(req, res),
   routes: Map(Method, EspressoService(req, res)),
 ) -> EspressoService(BitString, BitBuilder) {
-  fn(req: Request(BitString), bindings) -> Response(BitBuilder) {
+  fn(req: Request(BitString), params) -> Response(BitBuilder) {
     let method = req_to_method(req)
     let handler = map.get(routes, method)
 
     case handler {
-      Ok(handler) -> router.middleware(handler)(req, bindings)
+      Ok(handler) -> router.middleware(handler)(req, params)
       Error(_) ->
         404
         |> response.new()

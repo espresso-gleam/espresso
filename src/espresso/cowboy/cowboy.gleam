@@ -3,7 +3,7 @@ import gleam/pair
 import gleam/map.{Map}
 import gleam/option.{None, Option, Some}
 import gleam/result
-import gleam/http.{Header}
+import gleam/http.{Header, Method, Scheme}
 import gleam/http/request.{Request}
 import gleam/http/response.{Response}
 import gleam/bit_builder.{BitBuilder}
@@ -19,11 +19,25 @@ pub external type CowboyRouter
 pub type MethodPath =
   #(String, String)
 
-pub type Bindings =
+pub type Params =
   List(#(String, Dynamic))
 
+pub type EspressoRequest(body) {
+  EspressoRequest(
+    method: Method,
+    headers: List(Header),
+    body: body,
+    scheme: Scheme,
+    host: String,
+    port: Option(Int),
+    path: String,
+    query: Option(String),
+    params: Params,
+  )
+}
+
 pub type EspressoService(in, out) =
-  fn(Request(in), Bindings) -> Response(out)
+  fn(Request(in), Params) -> Response(out)
 
 pub type EspressoMiddleware(before_req, before_resp, after_req, after_resp) =
   fn(EspressoService(before_req, before_resp)) ->
@@ -74,7 +88,7 @@ pub fn router(routes: Routes) -> CowboyRouter {
     #(
       dynamic.from(underscore),
       dynamic.from(erlang_module_name()),
-      dynamic.from(service_to_handler(fn(_req, _bindings) {
+      dynamic.from(service_to_handler(fn(_req, _params) {
         er.send(404, "not found yo")
       })),
     ),
@@ -174,9 +188,8 @@ fn cowboy_format_headers(headers: List(Header)) -> Map(String, Dynamic) {
 
 fn service_to_handler(
   service: EspressoService(BitString, BitBuilder),
-) -> fn(CowboyRequest, Bindings) -> CowboyRequest {
-  fn(request, bindings) {
-    // do stuff with the bindings in the service fn
+) -> fn(CowboyRequest, Params) -> CowboyRequest {
+  fn(request, params) {
     let #(body, request) = get_body(request)
     let response =
       service(
@@ -190,7 +203,7 @@ fn service_to_handler(
           query: get_query(request),
           scheme: get_scheme(request),
         ),
-        bindings,
+        params,
       )
     let status = response.status
 

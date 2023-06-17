@@ -86,7 +86,7 @@ pub fn from_req(body: String) {
 pub fn decoder(
   handler: Service(Result(Cat, json.DecodeError), a),
 ) -> EspressoService(BitString, a) {
-  fn(req: Request(BitString), _bindings) -> Response(a) {
+  fn(req: Request(BitString), _params) -> Response(a) {
     request.map(
       req,
       fn(body) {
