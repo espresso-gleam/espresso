@@ -1,9 +1,10 @@
 import gleam/dynamic
 import gleam/json
-import gleam/option.{Option}
+import gleam/option.{None, Option}
 import gleam/http/request.{Request}
 import gleam/http/response.{Response}
 import gleam/http/service.{Service}
+import espresso/cowboy/cowboy.{EspressoService}
 import gleam/bit_string
 import gleam/result
 
@@ -17,8 +18,13 @@ pub type Cat {
   )
 }
 
+pub fn new() {
+  Cat(id: 0, name: "", lives: 0, flaws: None, nicknames: None)
+}
+
 pub fn encode(cat: Cat) {
   json.object([
+    #("id", json.int(cat.id)),
     #("name", json.string(cat.name)),
     #("lives", json.int(cat.lives)),
     #("flaws", json.null()),
@@ -79,8 +85,8 @@ pub fn from_req(body: String) {
 
 pub fn decoder(
   handler: Service(Result(Cat, json.DecodeError), a),
-) -> Service(BitString, a) {
-  fn(req: Request(BitString)) -> Response(a) {
+) -> EspressoService(BitString, a) {
+  fn(req: Request(BitString), _bindings) -> Response(a) {
     request.map(
       req,
       fn(body) {

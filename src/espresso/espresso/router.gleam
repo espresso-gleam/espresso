@@ -1,9 +1,10 @@
 import gleam/bit_builder.{BitBuilder}
 import gleam/http
-import espresso/cowboy/cowboy.{RouterRoute, ServiceRoute}
+import espresso/cowboy/cowboy.{
+  EspressoMiddleware, EspressoService, RouterRoute, ServiceRoute,
+}
 import gleam/http/request.{Request}
 import gleam/http/response.{Response}
-import gleam/http/service.{Middleware, Service}
 import gleam/map.{Map}
 import gleam/list
 import gleam/option.{None, Some}
@@ -20,13 +21,13 @@ pub type Method {
 }
 
 pub type Handler(req, res) {
-  ServiceHandler(Map(Method, Service(req, res)))
+  ServiceHandler(Map(Method, EspressoService(req, res)))
   RouterHandler(Router(req, res))
 }
 
 pub type Router(req, res) {
   Router(
-    middleware: Middleware(req, res, BitString, BitBuilder),
+    middleware: EspressoMiddleware(req, res, BitString, BitBuilder),
     handlers: Map(String, Handler(req, res)),
   )
 }
@@ -35,7 +36,7 @@ pub fn passthrough_middleware() {
   fn(a) { a }
 }
 
-pub fn new(middleware: Middleware(req, res, BitString, BitBuilder)) {
+pub fn new(middleware: EspressoMiddleware(req, res, BitString, BitBuilder)) {
   Router(middleware: middleware, handlers: map.new())
 }
 
@@ -43,7 +44,7 @@ fn add_service_handler(
   router: Router(req, res),
   path: String,
   method: Method,
-  handler: Service(req, res),
+  handler: EspressoService(req, res),
 ) {
   let handlers =
     map.update(
@@ -65,7 +66,7 @@ fn add_service_handler(
 pub fn get(
   router: Router(req, res),
   path: String,
-  handler: Service(req, res),
+  handler: EspressoService(req, res),
 ) -> Router(req, res) {
   add_service_handler(router, path, GET, handler)
 }
@@ -73,7 +74,7 @@ pub fn get(
 pub fn post(
   router: Router(req, res),
   path: String,
-  handler: Service(req, res),
+  handler: EspressoService(req, res),
 ) -> Router(req, res) {
   add_service_handler(router, path, POST, handler)
 }
@@ -98,13 +99,16 @@ pub fn router(
   Router(..router, handlers: handlers)
 }
 
-pub fn handle(router: Router(req, res), routes: Map(Method, Service(req, res))) {
-  fn(req: Request(BitString)) -> Response(BitBuilder) {
+pub fn handle(
+  router: Router(req, res),
+  routes: Map(Method, EspressoService(req, res)),
+) -> EspressoService(BitString, BitBuilder) {
+  fn(req: Request(BitString), bindings) -> Response(BitBuilder) {
     let method = req_to_method(req)
     let handler = map.get(routes, method)
 
     case handler {
-      Ok(handler) -> router.middleware(handler)(req)
+      Ok(handler) -> router.middleware(handler)(req, bindings)
       Error(_) ->
         404
         |> response.new()
@@ -119,7 +123,10 @@ pub fn to_routes(router: Router(req, res)) {
   |> list.map(fn(route_handler: #(String, Handler(req, res))) {
     let #(path, handler) = route_handler
     let service = case handler {
-      ServiceHandler(routes) -> ServiceRoute(handle(router, routes))
+      ServiceHandler(routes) -> {
+        let r = handle(router, routes)
+        ServiceRoute(r)
+      }
       RouterHandler(router) -> RouterRoute(to_routes(router))
     }
     #(path, service)

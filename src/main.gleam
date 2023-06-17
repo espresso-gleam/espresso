@@ -1,4 +1,5 @@
 import cat
+import espresso/cowboy/cowboy.{Bindings}
 import espresso/espresso
 import espresso/espresso/query
 import espresso/espresso/response.{json, send}
@@ -9,6 +10,8 @@ import gleam/json
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/pgo
+import gleam/result
+import gleam/dynamic
 
 pub fn main() {
   let db =
@@ -25,10 +28,13 @@ pub fn main() {
 
   let router =
     router.new(router.passthrough_middleware())
-    |> get("/", fn(_req: Request(BitString)) { send(202, "Main Route") })
+    |> get(
+      "/",
+      fn(_req: Request(BitString), _params) { send(202, "Main Route") },
+    )
     |> get(
       "/cats",
-      fn(req: Request(BitString)) {
+      fn(req: Request(BitString), _bindings) {
         let name = query.get(req, "name")
 
         let result = case name {
@@ -109,9 +115,40 @@ pub fn main() {
     )
     |> get(
       "/cats/:cat",
-      fn(req) {
-        io.debug(req)
-        send(200, "this is a cat yeah?")
+      fn(_req: Request(BitString), params: Bindings) {
+        let name =
+          params
+          |> list.key_find("cat")
+          |> result.unwrap(dynamic.from(""))
+          |> dynamic.string()
+          |> result.unwrap("")
+
+        let result =
+          pgo.execute(
+            "select id, name, lives, flaws, nicknames from cats where name = $1",
+            db,
+            [pgo.text(name)],
+            cat.from_db(),
+          )
+
+        case result {
+          Ok(result) -> {
+            let cat = list.first(result.rows)
+
+            case cat {
+              Ok(cat) ->
+                cat
+                |> cat.encode()
+                |> response.json()
+              Error(_) -> send(404, "Cat not found")
+            }
+          }
+
+          Error(error) -> {
+            io.debug(error)
+            send(500, "Internal Server Error")
+          }
+        }
       },
     )
 

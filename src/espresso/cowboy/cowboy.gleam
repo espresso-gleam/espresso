@@ -1,17 +1,16 @@
-import gleam/io
 import gleam/list
 import gleam/pair
 import gleam/map.{Map}
 import gleam/option.{None, Option, Some}
 import gleam/result
 import gleam/http.{Header}
-import gleam/http/service.{Service}
 import gleam/http/request.{Request}
+import gleam/http/response.{Response}
 import gleam/bit_builder.{BitBuilder}
 import gleam/dynamic.{Dynamic}
 import gleam/erlang/atom
 import gleam/erlang/process.{Pid}
-import espresso/espresso/response
+import espresso/espresso/response as er
 
 pub external type CowboyRequest
 
@@ -23,11 +22,18 @@ pub type MethodPath =
 pub type Bindings =
   List(#(String, Dynamic))
 
+pub type EspressoService(in, out) =
+  fn(Request(in), Bindings) -> Response(out)
+
+pub type EspressoMiddleware(before_req, before_resp, after_req, after_resp) =
+  fn(EspressoService(before_req, before_resp)) ->
+    EspressoService(after_req, after_resp)
+
 type CowboyRoutes =
   List(#(atom.Atom, List(#(Dynamic, Dynamic, Dynamic))))
 
 pub type Route {
-  ServiceRoute(Service(BitString, BitBuilder))
+  ServiceRoute(EspressoService(BitString, BitBuilder))
   RouterRoute(Routes)
 }
 
@@ -68,8 +74,8 @@ pub fn router(routes: Routes) -> CowboyRouter {
     #(
       dynamic.from(underscore),
       dynamic.from(erlang_module_name()),
-      dynamic.from(service_to_handler(fn(_req) {
-        response.send(404, "not found yo")
+      dynamic.from(service_to_handler(fn(_req, _bindings) {
+        er.send(404, "not found yo")
       })),
     ),
   ]
@@ -167,22 +173,25 @@ fn cowboy_format_headers(headers: List(Header)) -> Map(String, Dynamic) {
 }
 
 fn service_to_handler(
-  service: Service(BitString, BitBuilder),
+  service: EspressoService(BitString, BitBuilder),
 ) -> fn(CowboyRequest, Bindings) -> CowboyRequest {
   fn(request, bindings) {
     // do stuff with the bindings in the service fn
     let #(body, request) = get_body(request)
     let response =
-      service(Request(
-        body: body,
-        headers: get_headers(request),
-        host: get_host(request),
-        method: get_method(request),
-        path: get_path(request),
-        port: Some(get_port(request)),
-        query: get_query(request),
-        scheme: get_scheme(request),
-      ))
+      service(
+        Request(
+          body: body,
+          headers: get_headers(request),
+          host: get_host(request),
+          method: get_method(request),
+          path: get_path(request),
+          port: Some(get_port(request)),
+          query: get_query(request),
+          scheme: get_scheme(request),
+        ),
+        bindings,
+      )
     let status = response.status
 
     let headers = cowboy_format_headers(response.headers)
