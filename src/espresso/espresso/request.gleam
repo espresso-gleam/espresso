@@ -1,6 +1,5 @@
 // This is a fork of https://github.com/gleam-lang/http/blob/main/src/gleam/http/request.gleam
 // it has additional things like "Params"
-import gleam/dynamic.{Dynamic}
 import gleam/http.{Get, Header, Method, Scheme}
 import gleam/http/cookie
 import gleam/list
@@ -11,7 +10,7 @@ import gleam/string_builder
 import gleam/uri.{Uri}
 
 pub type Params =
-  List(#(String, Dynamic))
+  List(#(String, String))
 
 // TODO: document
 pub type Request(body) {
@@ -26,6 +25,15 @@ pub type Request(body) {
     query: Option(String),
     params: Params,
   )
+}
+
+pub fn get_param(req: Request(a), name: String) -> Option(String) {
+  let result = list.key_find(req.params, name)
+
+  case result {
+    Ok(value) -> Some(value)
+    Error(_) -> None
+  }
 }
 
 /// Return the uri that a request was sent to.

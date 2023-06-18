@@ -9,8 +9,6 @@ import gleam/json
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/pgo
-import gleam/result
-import gleam/dynamic
 
 pub fn main() {
   let db =
@@ -113,11 +111,9 @@ pub fn main() {
       "/cats/:cat",
       fn(req: Request(BitString)) {
         let name =
-          req.params
-          |> list.key_find("cat")
-          |> result.unwrap(dynamic.from(""))
-          |> dynamic.string()
-          |> result.unwrap("")
+          req
+          |> request.get_param("cat")
+          |> option.unwrap("")
 
         let result =
           pgo.execute(
