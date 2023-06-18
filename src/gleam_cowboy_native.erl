@@ -7,7 +7,7 @@ module_name() ->
 
 router(Routes) ->
     % print out the routes for debugging
-    io:format("Routes: ~p~n", [Routes]),
+    % io:format("Routes: ~p~n", [Routes]),
     cowboy_router:compile(Routes).
 
 start_link(Router, Port) ->

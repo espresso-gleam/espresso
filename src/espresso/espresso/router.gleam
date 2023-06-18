@@ -83,19 +83,28 @@ pub fn router(
   path: String,
   subrouter: Router(req, res),
 ) -> Router(req, res) {
-  let handlers =
-    map.update(
-      router.handlers,
-      path,
-      fn(existing_handler) {
-        case existing_handler {
-          None -> RouterHandler(subrouter)
-          // this should be an error
-          Some(a) -> a
+  Router(..router, handlers: expand(path, router.handlers, subrouter))
+}
+
+pub fn expand(
+  path: String,
+  handlers: Map(String, Handler(req, res)),
+  router: Router(req, res),
+) -> Map(String, Handler(req, res)) {
+  map.fold(
+    router.handlers,
+    handlers,
+    fn(acc, key, value) {
+      case value {
+        RouterHandler(subrouter) -> {
+          expand(path <> key, acc, subrouter)
         }
-      },
-    )
-  Router(..router, handlers: handlers)
+        ServiceHandler(routes) -> {
+          map.insert(acc, key, ServiceHandler(routes))
+        }
+      }
+    },
+  )
 }
 
 pub fn handle(
