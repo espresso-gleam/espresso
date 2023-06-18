@@ -1,36 +1,26 @@
-import gleam/list
-import gleam/pair
-import gleam/map.{Map}
-import gleam/option.{None, Option, Some}
-import gleam/result
-import gleam/http.{Header}
-import gleam/http/response.{Response}
+import espresso/espresso/request.{Params, Request}
+import espresso/espresso/response
+import espresso/espresso/service.{Service}
 import gleam/bit_builder.{BitBuilder}
 import gleam/dynamic.{Dynamic}
 import gleam/erlang/atom
 import gleam/erlang/process.{Pid}
-import espresso/espresso/response as er
-import espresso/espresso/request.{Params, Request}
+import gleam/http.{Header}
+import gleam/list
+import gleam/map.{Map}
+import gleam/option.{None, Option, Some}
+import gleam/pair
+import gleam/result
 
 pub external type CowboyRequest
 
 pub external type CowboyRouter
 
-pub type MethodPath =
-  #(String, String)
-
-pub type EspressoService(in, out) =
-  fn(Request(in)) -> Response(out)
-
-pub type EspressoMiddleware(before_req, before_resp, after_req, after_resp) =
-  fn(EspressoService(before_req, before_resp)) ->
-    EspressoService(after_req, after_resp)
-
 type CowboyRoutes =
   List(#(atom.Atom, List(#(Dynamic, Dynamic, Dynamic))))
 
 pub type Route {
-  ServiceRoute(EspressoService(BitString, BitBuilder))
+  ServiceRoute(Service(BitString, BitBuilder))
   RouterRoute(Routes)
 }
 
@@ -71,7 +61,9 @@ pub fn router(routes: Routes) -> CowboyRouter {
     #(
       dynamic.from(underscore),
       dynamic.from(erlang_module_name()),
-      dynamic.from(service_to_handler(fn(_req) { er.send(404, "not found yo") })),
+      dynamic.from(service_to_handler(fn(_req) {
+        response.send(404, "not found yo")
+      })),
     ),
   ]
 
@@ -168,7 +160,7 @@ fn cowboy_format_headers(headers: List(Header)) -> Map(String, Dynamic) {
 }
 
 fn service_to_handler(
-  service: EspressoService(BitString, BitBuilder),
+  service: Service(BitString, BitBuilder),
 ) -> fn(CowboyRequest, Params) -> CowboyRequest {
   fn(request, params) {
     let #(body, request) = get_body(request)

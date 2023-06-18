@@ -1,10 +1,10 @@
+import espresso/espresso/request.{Request}
+import espresso/espresso/response.{Response}
+import espresso/espresso/service.{Service}
+import gleam/bit_string
 import gleam/dynamic
 import gleam/json
 import gleam/option.{None, Option}
-import gleam/http/response.{Response}
-import espresso/cowboy/cowboy.{EspressoService}
-import espresso/espresso/request.{Request}
-import gleam/bit_string
 import gleam/result
 
 pub type Cat {
@@ -83,8 +83,8 @@ pub fn from_req(body: String) {
 }
 
 pub fn decoder(
-  handler: EspressoService(Result(Cat, json.DecodeError), a),
-) -> EspressoService(BitString, a) {
+  handler: Service(Result(Cat, json.DecodeError), a),
+) -> Service(BitString, a) {
   fn(req: Request(BitString)) -> Response(a) {
     request.map(
       req,
