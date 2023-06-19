@@ -1,4 +1,4 @@
-import espresso/espresso/router.{Router, handle}
+import espresso/espresso/router.{Router, to_routes}
 import gleam/erlang/os
 import gleam/erlang/process
 import espresso/cowboy/cowboy
@@ -18,7 +18,7 @@ pub external fn exit(i32) -> Nil =
 
 pub fn start(r: Router(req, res)) {
   let port = get_port()
-  case cowboy.start(fn(request) { handle(r, request) }, on_port: port) {
+  case cowboy.start(cowboy.router(to_routes(r)), on_port: port) {
     Ok(_) -> process.sleep_forever()
     Error(_) -> exit(1)
   }

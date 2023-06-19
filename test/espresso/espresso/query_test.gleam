@@ -1,7 +1,7 @@
 import espresso/espresso/query
-import gleam/http/request
 import gleam/option.{None, Some}
 import gleeunit/should
+import espresso/espresso/request
 
 pub fn query_present_test() {
   request.new()
