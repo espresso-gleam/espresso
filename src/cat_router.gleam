@@ -12,7 +12,7 @@ import gleam/pgo.{Connection}
 pub fn routes(db: Connection) {
   router.new(router.passthrough_middleware())
   |> get(
-    "/cats",
+    "/",
     fn(req: Request(BitString)) {
       let name = query.get(req, "name")
 
@@ -49,7 +49,7 @@ pub fn routes(db: Connection) {
     },
   )
   |> post(
-    "/cats",
+    "/",
     {
       use req <- cat.decoder
       case req.body {
@@ -93,7 +93,7 @@ pub fn routes(db: Connection) {
     },
   )
   |> get(
-    "/cats/:cat",
+    "/:cat",
     fn(req: Request(BitString)) {
       let name =
         req

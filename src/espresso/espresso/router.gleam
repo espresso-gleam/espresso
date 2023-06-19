@@ -100,7 +100,7 @@ pub fn expand(
           expand(path <> key, acc, subrouter)
         }
         ServiceHandler(routes) -> {
-          map.insert(acc, key, ServiceHandler(routes))
+          map.insert(acc, path <> key, ServiceHandler(routes))
         }
       }
     },
