@@ -1,6 +1,6 @@
 // https://github.com/gleam-lang/http/blob/v3.2.0/src/gleam/http/service.gleam
-import espresso/espresso/request.{Request}
-import espresso/espresso/response.{Response}
+import espresso/request.{Request}
+import espresso/response.{Response}
 import gleam/http.{Delete, Patch, Post, Put}
 import gleam/list
 import gleam/result

@@ -1,8 +1,8 @@
 // original source:
 // https://github.com/gleam-lang/cowboy/blob/83e2f20170e4a73e5499238149313f8329a2f41a/src/gleam/http/cowboy.gleam
-import espresso/espresso/request.{Params, Request}
-import espresso/espresso/response
-import espresso/espresso/service.{Service}
+import espresso/request.{Params, Request}
+import espresso/response
+import espresso/service.{Service}
 import gleam/bit_builder.{BitBuilder}
 import gleam/dynamic.{Dynamic}
 import gleam/erlang/atom
@@ -186,9 +186,6 @@ fn service_to_handler(
   }
 }
 
-// TODO: document
-// TODO: test
 pub fn start(router: CowboyRouter, on_port number: Int) -> Result(Pid, Dynamic) {
-  router
-  |> erlang_start_link(number)
+  erlang_start_link(router, number)
 }

@@ -1,7 +1,7 @@
-import espresso/cowboy/cowboy.{RouterRoute, ServiceRoute}
-import espresso/espresso/request.{Request}
-import espresso/espresso/response.{Response}
-import espresso/espresso/service.{Middleware, Service}
+import cowboy/cowboy.{RouterRoute, ServiceRoute}
+import espresso/request.{Request}
+import espresso/response.{Response}
+import espresso/service.{Middleware, Service}
 import gleam/bit_builder.{BitBuilder}
 import gleam/http
 import gleam/list
