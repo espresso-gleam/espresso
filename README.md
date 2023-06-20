@@ -1,5 +1,7 @@
 # espresso
 
+_This package is experimental and likely to change. Use at your own risk_
+
 [![Package Version](https://img.shields.io/hexpm/v/espresso)](https://hex.pm/packages/espresso)
 [![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/espresso/)
 
