@@ -1,11 +1,12 @@
-import cowboy/cowboy.{RouterRoute, ServiceRoute}
+import cowboy/cowboy.{Route, RouterRoute, ServiceRoute, StaticRoute}
+import espresso/ordered_map.{OrderedMap}
 import espresso/request.{Request}
 import espresso/response.{Response}
 import espresso/service.{Middleware, Service}
+import espresso/static.{Static}
 import gleam/bit_builder.{BitBuilder}
 import gleam/http
 import gleam/list
-import gleam/map.{Map}
 import gleam/option.{None, Some}
 
 pub type Method {
@@ -20,19 +21,20 @@ pub type Method {
 }
 
 pub type Handler(req, res) {
-  ServiceHandler(Map(Method, Service(req, res)))
+  ServiceHandler(OrderedMap(Method, Service(req, res)))
   RouterHandler(Router(req, res))
+  StaticHandler(String, Static)
 }
 
 pub type Router(req, res) {
   Router(
     middleware: Middleware(req, res, BitString, BitBuilder),
-    handlers: Map(String, Handler(req, res)),
+    handlers: OrderedMap(String, Handler(req, res)),
   )
 }
 
 pub fn new() {
-  Router(middleware: fn(x) { x }, handlers: map.new())
+  Router(middleware: fn(x) { x }, handlers: ordered_map.new())
 }
 
 fn add_service_handler(
@@ -42,14 +44,14 @@ fn add_service_handler(
   handler: Service(req, res),
 ) {
   let handlers =
-    map.update(
+    ordered_map.update(
       router.handlers,
       path,
       fn(existing_handler) {
         case existing_handler {
           Some(ServiceHandler(routes)) ->
-            ServiceHandler(map.insert(routes, method, handler))
-          None -> ServiceHandler(map.from_list([#(method, handler)]))
+            ServiceHandler(ordered_map.insert(routes, method, handler))
+          None -> ServiceHandler([#(method, handler)])
           // this should be an error
           Some(a) -> a
         }
@@ -74,6 +76,58 @@ pub fn post(
   add_service_handler(router, path, POST, handler)
 }
 
+pub fn put(
+  router: Router(req, res),
+  path: String,
+  handler: Service(req, res),
+) -> Router(req, res) {
+  add_service_handler(router, path, PUT, handler)
+}
+
+pub fn patch(
+  router: Router(req, res),
+  path: String,
+  handler: Service(req, res),
+) -> Router(req, res) {
+  add_service_handler(router, path, PATCH, handler)
+}
+
+pub fn delete(
+  router: Router(req, res),
+  path: String,
+  handler: Service(req, res),
+) -> Router(req, res) {
+  add_service_handler(router, path, DELETE, handler)
+}
+
+/// Handles a request for a given path and returns static files
+/// Currently only supports File and Directory
+/// 
+/// # Examples
+/// 
+/// ```gleam
+/// import espresso/router
+/// import espreso/static
+///
+/// // Serves all files in the priv/public directory for any request starting with /public
+/// router.new()
+/// |> router.static("/public/[...]", static.Dir("priv/public"))
+/// 
+/// // Serves only the index.html file from the priv/public directory
+/// router.new()
+/// |> router.static("/", static.File("priv/public/index.html"))
+/// ```
+/// 
+pub fn static(
+  router: Router(req, res),
+  path: String,
+  config: Static,
+) -> Router(req, res) {
+  let handlers =
+    ordered_map.insert(router.handlers, path, StaticHandler(path, config))
+  Router(..router, handlers: handlers)
+}
+
 pub fn router(
   router: Router(req, res),
   path: String,
@@ -84,10 +138,10 @@ pub fn router(
 
 pub fn expand(
   path: String,
-  handlers: Map(String, Handler(req, res)),
+  handlers: OrderedMap(String, Handler(req, res)),
   router: Router(req, res),
-) -> Map(String, Handler(req, res)) {
-  map.fold(
+) -> OrderedMap(String, Handler(req, res)) {
+  ordered_map.fold(
     router.handlers,
     handlers,
     fn(acc, key, value) {
@@ -96,7 +150,10 @@ pub fn expand(
           expand(path <> key, acc, subrouter)
         }
         ServiceHandler(routes) -> {
-          map.insert(acc, path <> key, ServiceHandler(routes))
+          ordered_map.insert(acc, path <> key, ServiceHandler(routes))
+        }
+        StaticHandler(path, config) -> {
+          ordered_map.insert(acc, path <> key, StaticHandler(path, config))
         }
       }
     },
@@ -105,15 +162,15 @@ pub fn expand(
 
 pub fn handle(
   router: Router(req, res),
-  routes: Map(Method, Service(req, res)),
+  routes: OrderedMap(Method, Service(req, res)),
 ) -> Service(BitString, BitBuilder) {
   fn(req: Request(BitString)) -> Response(BitBuilder) {
     let method = req_to_method(req)
-    let handler = map.get(routes, method)
+    let handler = ordered_map.get(routes, method)
 
     case handler {
-      Ok(handler) -> router.middleware(handler)(req)
-      Error(_) ->
+      Some(handler) -> router.middleware(handler)(req)
+      None ->
         404
         |> response.new()
         |> response.set_body(bit_builder.from_string("Not found"))
@@ -121,9 +178,8 @@ pub fn handle(
   }
 }
 
-pub fn to_routes(router: Router(req, res)) {
+pub fn to_routes(router: Router(req, res)) -> OrderedMap(String, Route) {
   router.handlers
-  |> map.to_list()
   |> list.map(fn(route_handler: #(String, Handler(req, res))) {
     let #(path, handler) = route_handler
     let service = case handler {
@@ -132,10 +188,10 @@ pub fn to_routes(router: Router(req, res)) {
         ServiceRoute(r)
       }
       RouterHandler(router) -> RouterRoute(to_routes(router))
+      StaticHandler(path, config) -> StaticRoute(path, config)
     }
     #(path, service)
   })
-  |> map.from_list()
 }
 
 fn req_to_method(req: Request(a)) {

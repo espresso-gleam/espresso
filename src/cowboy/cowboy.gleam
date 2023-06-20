@@ -4,19 +4,21 @@
 //// original source:
 //// https://github.com/gleam-lang/cowboy/blob/83e2f20170e4a73e5499238149313f8329a2f41a/src/gleam/http/cowboy.gleam
 
+import espresso/ordered_map.{OrderedMap}
 import espresso/request.{Params, Request}
 import espresso/response
 import espresso/service.{Service}
+import espresso/static.{Static}
 import gleam/bit_builder.{BitBuilder}
 import gleam/dynamic.{Dynamic}
 import gleam/erlang/atom
 import gleam/erlang/process.{Pid}
 import gleam/http.{Header}
 import gleam/list
-import gleam/map.{Map}
 import gleam/option.{None, Option, Some}
 import gleam/pair
 import gleam/result
+import gleam/map.{Map}
 
 /// An incoming request that will be handled by the dispatch in gleam_cowboy_native.erl
 pub external type CowboyRequest
@@ -33,20 +35,26 @@ type CowboyRoutes =
 pub type Route {
   ServiceRoute(Service(BitString, BitBuilder))
   RouterRoute(Routes)
+  StaticRoute(String, Static)
 }
 
 /// Routes are the mapping between a path and the route. 
 /// For example `/hello` -> `hello_service`
 pub type Routes =
-  Map(String, Route)
+  OrderedMap(String, Route)
 
 external type ModuleName
+
+external type CowboyStatic
 
 external fn erlang_module_name() -> ModuleName =
   "gleam_cowboy_native" "module_name"
 
 external fn erlang_router(CowboyRoutes) -> CowboyRouter =
   "gleam_cowboy_native" "router"
+
+external fn erlang_cowboy_static() -> CowboyStatic =
+  "gleam_cowboy_native" "static_module"
 
 /// Takes a list of route structures and compiles them into a cowboy router.
 /// 
@@ -55,7 +63,6 @@ pub fn router(routes: Routes) -> CowboyRouter {
 
   let cowboy_routes =
     routes
-    |> map.to_list()
     |> list.map(fn(entry) {
       let #(path, route) = entry
       case route {
@@ -68,6 +75,11 @@ pub fn router(routes: Routes) -> CowboyRouter {
           dynamic.from(path),
           dynamic.from(router(routes)),
           dynamic.from([]),
+        )
+        StaticRoute(path, config) -> #(
+          dynamic.from(path),
+          dynamic.from(erlang_cowboy_static()),
+          dynamic.from(config),
         )
       }
     })
