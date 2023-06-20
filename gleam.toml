@@ -14,7 +14,6 @@ links = []
 gleam_stdlib = "~> 0.28"
 gleam_http = "~> 3.2.0"
 gleam_json = "~> 0.5"
-gleam_pgo = "~> 0.4"
 gleam_otp = "~> 0.3"
 cowboy = "~> 2.0"
 
