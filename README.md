@@ -5,6 +5,21 @@
 
 A simple to use HTTP server built on top of erlang's cowboy.
 
+```gleam
+import espresso
+import espresso/request.{Request}
+import espresso/response.{send}
+import espresso/router.{get}
+
+pub fn main() {
+  let router =
+    router.new()
+    |> get("/", fn(_req: Request(BitString)) { send(202, "Main Route") })
+
+  espresso.start(router)
+}
+```
+
 ## Quick start
 
 ```sh
