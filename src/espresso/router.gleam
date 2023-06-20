@@ -31,8 +31,8 @@ pub type Router(req, res) {
   )
 }
 
-pub fn new(middleware: Middleware(req, res, BitString, BitBuilder)) {
-  Router(middleware: middleware, handlers: map.new())
+pub fn new() {
+  Router(middleware: fn(x) { x }, handlers: map.new())
 }
 
 fn add_service_handler(
