@@ -3,7 +3,7 @@
 [![Package Version](https://img.shields.io/hexpm/v/espresso)](https://hex.pm/packages/espresso)
 [![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/espresso/)
 
-A Gleam project
+A simple to use HTTP server built on top of erlang's cowboy.
 
 ## Quick start
 
