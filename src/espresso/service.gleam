@@ -1,18 +1,25 @@
-// https://github.com/gleam-lang/http/blob/v3.2.0/src/gleam/http/service.gleam
+//// Service module that's mostly the same as the one in gleam/http but
+//// instead of taking gleam/http request and response it takes espresso versions.
+//// 
+//// Forked from https://github.com/gleam-lang/http/blob/v3.2.0/src/gleam/http/service.gleam
+
 import espresso/request.{Request}
 import espresso/response.{Response}
 import gleam/http.{Delete, Patch, Post, Put}
 import gleam/list
 import gleam/result
 
-// TODO: document
+/// Services are functions that take a request and return a response.
+/// They are the core building block of web applications.
 pub type Service(in, out) =
   fn(Request(in)) -> Response(out)
 
+/// Middleware are functions that take a before req/res and return a 
+/// new req/res. They are used to transform requests and responses.
 pub type Middleware(before_req, before_resp, after_req, after_resp) =
   fn(Service(before_req, before_resp)) -> Service(after_req, after_resp)
 
-/// A middleware that transform the response body returned by the service using
+/// A middleware that transforms the response body returned by the service using
 /// a given function.
 ///
 pub fn map_response_body(
