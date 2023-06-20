@@ -1,3 +1,7 @@
+//// This is the base module for starting the http server. It also does things
+//// like retrieve the system port and halts but the main thing is the start
+//// function.
+
 import espresso/router.{Router, to_routes}
 import gleam/erlang/os
 import gleam/erlang/process
@@ -33,7 +37,7 @@ external fn exit(i32) -> Nil =
 ///
 /// pub fn main() {
 ///   let router =
-///     router.new(router.passthrough_middleware())
+///     router.new()
 ///     |> get("/", fn(_req: Request(BitString)) { send(202, "Main Route") })
 ///
 ///   espresso.start(router)

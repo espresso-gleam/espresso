@@ -31,10 +31,6 @@ pub type Router(req, res) {
   )
 }
 
-pub fn passthrough_middleware() {
-  fn(a) { a }
-}
-
 pub fn new(middleware: Middleware(req, res, BitString, BitBuilder)) {
   Router(middleware: middleware, handlers: map.new())
 }

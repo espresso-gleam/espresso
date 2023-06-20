@@ -13,7 +13,6 @@ router(Routes) ->
     cowboy_router:compile(Routes).
 
 start_link(Router, Port) ->
-    io:format("Router: ~p~n", [Router]),
     RanchOptions = #{
         max_connections => 16384,
         num_acceptors => 100,

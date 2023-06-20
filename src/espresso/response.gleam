@@ -1,4 +1,7 @@
-// https://github.com/gleam-lang/http/blob/v3.2.0/src/gleam/http/response.gleam
+//// Module for interacting and sending HTTP responses.
+//// 
+//// Forked from: https://github.com/gleam-lang/http/blob/v3.2.0/src/gleam/http/response.gleam
+
 import gleam/bit_builder.{BitBuilder}
 import gleam/http.{Header}
 import gleam/http/cookie
@@ -8,7 +11,7 @@ import gleam/option
 import gleam/result
 import gleam/string
 
-// TODO: document
+/// Type that represents an HTTP response.
 pub type Response(body) {
   Response(status: Int, headers: List(Header), body: body)
 }
@@ -143,6 +146,22 @@ pub fn expire_cookie(
   set_cookie(response, name, "", attrs)
 }
 
+/// Given json data, sends a 200 response with the json data as the body.
+/// 
+/// # Example
+/// 
+/// ```gleam
+/// import espresso/request.{Request}
+/// import espresso/response
+/// import cat
+/// 
+/// fn handler(_req: Request) {
+///   Cat(name: "Test") 
+///   |> cat.encode()
+///   |> response.json()
+/// }
+/// ```
+/// 
 pub fn json(data: json.Json) -> Response(BitBuilder) {
   200
   |> new()
@@ -154,6 +173,24 @@ pub fn json(data: json.Json) -> Response(BitBuilder) {
   )
 }
 
+/// Similar to `json` but allows you to override more fields in the response.
+/// 
+/// # Example
+/// 
+/// ```gleam
+/// import espresso/request.{Request}
+/// import espresso/response
+/// import cat
+/// 
+/// fn handler(_req: Request) {
+///   let cat = Cat(name: "Test") 
+///   
+///   201
+///   |> response.new()
+///   |> response.json2(cat.encode(cat))
+/// }
+/// ```
+/// 
 pub fn json2(res: Response(a), data: json.Json) -> Response(BitBuilder) {
   res
   |> set_header("Content-Type", "application/json")
@@ -164,6 +201,17 @@ pub fn json2(res: Response(a), data: json.Json) -> Response(BitBuilder) {
   )
 }
 
+/// sends a generic response with the given status code and text body.
+/// 
+/// # Example
+/// 
+/// ```gleam
+/// import espresso/request.{Request}
+/// 
+/// fn handler(_req: Request) {
+///  response.send(200, "Hello World")
+/// }
+/// ```
 pub fn send(status: Int, body: String) -> Response(BitBuilder) {
   status
   |> new()

@@ -1,5 +1,9 @@
-// original source:
-// https://github.com/gleam-lang/cowboy/blob/83e2f20170e4a73e5499238149313f8329a2f41a/src/gleam/http/cowboy.gleam
+//// This is a simple wrapper over the erlang cowboy server. It is originall from gleam-lang/cowboy
+//// but has been modified to work with espresso.
+//// 
+//// original source:
+//// https://github.com/gleam-lang/cowboy/blob/83e2f20170e4a73e5499238149313f8329a2f41a/src/gleam/http/cowboy.gleam
+
 import espresso/request.{Params, Request}
 import espresso/response
 import espresso/service.{Service}
@@ -14,18 +18,25 @@ import gleam/option.{None, Option, Some}
 import gleam/pair
 import gleam/result
 
+/// An incoming request that will be handled by the dispatch in gleam_cowboy_native.erl
 pub external type CowboyRequest
 
+/// The returned result of cowboy_router:compile
 pub external type CowboyRouter
 
+/// A list of routes that will be compiled by cowboy_router:compile
 type CowboyRoutes =
   List(#(atom.Atom, List(#(Dynamic, Dynamic, Dynamic))))
 
+/// A Route can either be a service (a function that handles a request and response)
+/// or a router which is expanded into a list of services.
 pub type Route {
   ServiceRoute(Service(BitString, BitBuilder))
   RouterRoute(Routes)
 }
 
+/// Routes are the mapping between a path and the route. 
+/// For example `/hello` -> `hello_service`
 pub type Routes =
   Map(String, Route)
 
@@ -37,6 +48,8 @@ external fn erlang_module_name() -> ModuleName =
 external fn erlang_router(CowboyRoutes) -> CowboyRouter =
   "gleam_cowboy_native" "router"
 
+/// Takes a list of route structures and compiles them into a cowboy router.
+/// 
 pub fn router(routes: Routes) -> CowboyRouter {
   let underscore = atom.create_from_string("_")
 
@@ -63,9 +76,7 @@ pub fn router(routes: Routes) -> CowboyRouter {
     #(
       dynamic.from(underscore),
       dynamic.from(erlang_module_name()),
-      dynamic.from(service_to_handler(fn(_req) {
-        response.send(404, "not found yo")
-      })),
+      dynamic.from(service_to_handler(fn(_req) { response.send(404, "") })),
     ),
   ]
 
@@ -186,6 +197,8 @@ fn service_to_handler(
   }
 }
 
+/// Start the cowboy server on the given port.
+/// 
 pub fn start(router: CowboyRouter, on_port number: Int) -> Result(Pid, Dynamic) {
   erlang_start_link(router, number)
 }

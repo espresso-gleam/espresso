@@ -12,7 +12,10 @@ import gleam/uri.{Uri}
 pub type Params =
   List(#(String, String))
 
-// TODO: document
+/// Represents an HTTP request.
+/// Contains most of the pieces of a URI but additionally contains
+/// the HTTP method, headers, and body. Also contains the params which
+/// are the parsed elements of a router path.
 pub type Request(body) {
   Request(
     method: Method,
@@ -27,6 +30,16 @@ pub type Request(body) {
   )
 }
 
+/// Utility function to get a router param from the request.
+/// 
+/// # Examples
+/// ```gleam
+/// import espresso/request.{Request}
+/// 
+/// fn handler(req: Request(a)) {
+///   let id = req |> request.get_param("id") |> option.unwrap("")
+/// }
+/// ```
 pub fn get_param(req: Request(a), name: String) -> Option(String) {
   let result = list.key_find(req.params, name)
 
