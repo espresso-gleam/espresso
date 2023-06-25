@@ -4,7 +4,6 @@ import espresso/request.{Request}
 import espresso/response.{Response}
 import espresso/service.{Middleware, Service}
 import espresso/static.{Static}
-import gleam/bit_builder.{BitBuilder}
 import gleam/http
 import gleam/list
 import gleam/option.{None, Some}
@@ -28,13 +27,66 @@ pub type Handler(req, res) {
 
 pub type Router(req, res) {
   Router(
-    middleware: Middleware(req, res, BitString, BitBuilder),
+    middleware: Middleware(req, res, req, res),
     handlers: OrderedMap(String, Handler(req, res)),
+    not_found: Service(req, res),
   )
 }
 
+/// Instantiates a new router. This is usually the starting point for route
+/// definitions unless you want to override the types of the req, res, middleware or
+/// not_found handler.
+/// 
+/// # Examples
+/// 
+/// ```gleam
+/// import espresso/router
+/// 
+/// router.new()
+/// |> get("/", fn(_req: Request(BitString)) { send(200, "Success") })
+/// ```
 pub fn new() {
-  Router(middleware: fn(x) { x }, handlers: ordered_map.new())
+  Router(
+    middleware: fn(x) { x },
+    handlers: ordered_map.new(),
+    not_found: fn(_req) { response.new(404) },
+  )
+}
+
+/// Sets the middleware for a router. This is a function that wraps all the router handlers under it.
+/// Currently it doesn't support more than one but that may work in the future.
+/// 
+/// # Examples
+/// 
+/// ```gleam
+/// import espresso/router.{get, delete}
+/// import espresso/request.{Request}
+/// import espresso/service.{Service}
+/// 
+/// router.new()
+/// |> router.router(
+///  "/api",
+///  router.new()
+///  |> router.middleware(fn(next: Service(BitString, BitBuilder)) {
+///    fn(req: Request(BitString)) {
+///      let auth = request.get_header(req, "authorization")
+///      case auth {
+///        Ok("Basic OnN1cGVyc2VjcmV0") -> next(req)
+///        _ -> send(401, "Unauthorized")
+///      }
+///    }
+///  })
+///  |> get("/things", fn(_req: Request(BitString)) { send(200, "Things") })
+///  |> delete("/things", fn(_req: Request(BitString)) { send(204, "") }),
+/// )
+/// 
+/// ```
+/// 
+pub fn middleware(
+  router: Router(req, res),
+  middleware: Middleware(req, res, req, res),
+) {
+  Router(..router, middleware: middleware)
 }
 
 fn add_service_handler(
@@ -49,9 +101,14 @@ fn add_service_handler(
       path,
       fn(existing_handler) {
         case existing_handler {
-          Some(ServiceHandler(routes)) ->
-            ServiceHandler(ordered_map.insert(routes, method, handler))
-          None -> ServiceHandler([#(method, handler)])
+          Some(ServiceHandler(routes)) -> {
+            let wrapped_handler = router.middleware(handler)
+            ServiceHandler(ordered_map.insert(routes, method, wrapped_handler))
+          }
+          None -> {
+            let wrapped_handler = router.middleware(handler)
+            ServiceHandler([#(method, wrapped_handler)])
+          }
           // this should be an error
           Some(a) -> a
         }
@@ -163,22 +220,21 @@ pub fn expand(
 pub fn handle(
   router: Router(req, res),
   routes: OrderedMap(Method, Service(req, res)),
-) -> Service(BitString, BitBuilder) {
-  fn(req: Request(BitString)) -> Response(BitBuilder) {
+) -> Service(req, res) {
+  fn(req: Request(req)) -> Response(res) {
     let method = req_to_method(req)
     let handler = ordered_map.get(routes, method)
 
     case handler {
       Some(handler) -> router.middleware(handler)(req)
-      None ->
-        404
-        |> response.new()
-        |> response.set_body(bit_builder.from_string("Not found"))
+      None -> router.not_found(req)
     }
   }
 }
 
-pub fn to_routes(router: Router(req, res)) -> OrderedMap(String, Route) {
+pub fn to_routes(
+  router: Router(req, res),
+) -> OrderedMap(String, Route(req, res)) {
   router.handlers
   |> list.map(fn(route_handler: #(String, Handler(req, res))) {
     let #(path, handler) = route_handler

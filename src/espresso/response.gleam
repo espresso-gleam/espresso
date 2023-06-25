@@ -34,8 +34,8 @@ pub fn try_map(
 /// The body type of the returned response is `String` and could be set with a
 /// call to `set_body`.
 ///
-pub fn new(status: Int) -> Response(String) {
-  Response(status: status, headers: [], body: "")
+pub fn new(status: Int) -> Response(BitBuilder) {
+  Response(status: status, headers: [], body: bit_builder.from_string(""))
 }
 
 /// Get the value for a given header.
@@ -94,11 +94,14 @@ pub fn map(
 
 /// Create a response that redirects to the given uri.
 ///
-pub fn redirect(uri: String) -> Response(String) {
+pub fn redirect(uri: String) -> Response(BitBuilder) {
   Response(
     status: 303,
     headers: [#("location", uri)],
-    body: string.append("You are being redirected to ", uri),
+    body: bit_builder.from_string(string.append(
+      "You are being redirected to ",
+      uri,
+    )),
   )
 }
 

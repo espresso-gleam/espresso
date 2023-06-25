@@ -9,7 +9,6 @@ import espresso/request.{Params, Request}
 import espresso/response
 import espresso/service.{Service}
 import espresso/static.{Static}
-import gleam/bit_builder.{BitBuilder}
 import gleam/dynamic.{Dynamic}
 import gleam/erlang/atom
 import gleam/erlang/process.{Pid}
@@ -32,16 +31,16 @@ type CowboyRoutes =
 
 /// A Route can either be a service (a function that handles a request and response)
 /// or a router which is expanded into a list of services.
-pub type Route {
-  ServiceRoute(Service(BitString, BitBuilder))
-  RouterRoute(Routes)
+pub type Route(req, res) {
+  ServiceRoute(Service(req, res))
+  RouterRoute(Routes(req, res))
   StaticRoute(String, Static)
 }
 
 /// Routes are the mapping between a path and the route. 
 /// For example `/hello` -> `hello_service`
-pub type Routes =
-  OrderedMap(String, Route)
+pub type Routes(req, res) =
+  OrderedMap(String, Route(req, res))
 
 external type ModuleName
 
@@ -58,7 +57,7 @@ external fn erlang_cowboy_static() -> CowboyStatic =
 
 /// Takes a list of route structures and compiles them into a cowboy router.
 /// 
-pub fn router(routes: Routes) -> CowboyRouter {
+pub fn router(routes: Routes(req, res)) -> CowboyRouter {
   let underscore = atom.create_from_string("_")
 
   let cowboy_routes =
@@ -104,7 +103,7 @@ external fn erlang_start_link(
 external fn cowboy_reply(
   Int,
   Map(String, Dynamic),
-  BitBuilder,
+  res,
   CowboyRequest,
 ) -> CowboyRequest =
   "cowboy_req" "reply"
@@ -128,7 +127,7 @@ fn get_headers(request) -> List(http.Header) {
   |> map.to_list
 }
 
-external fn get_body(CowboyRequest) -> #(BitString, CowboyRequest) =
+external fn get_body(CowboyRequest) -> #(req, CowboyRequest) =
   "gleam_cowboy_native" "read_entire_body"
 
 external fn erlang_get_scheme(CowboyRequest) -> String =
@@ -185,7 +184,7 @@ fn cowboy_format_headers(headers: List(Header)) -> Map(String, Dynamic) {
 }
 
 fn service_to_handler(
-  service: Service(BitString, BitBuilder),
+  service: Service(req, res),
 ) -> fn(CowboyRequest, Params) -> CowboyRequest {
   fn(request, params) {
     let #(body, request) = get_body(request)
