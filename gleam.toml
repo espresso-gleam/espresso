@@ -1,6 +1,6 @@
 name = "espresso"
 version = "0.0.5"
-description = "A simple http server and router built on top of erlang cowboy"
+description = "A simple gleam http server and router built on top of erlang cowboy"
 
 # Fill out these fields if you intend to generate HTML documentation or publish
 # your project to the Hex package manager.
