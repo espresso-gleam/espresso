@@ -11,21 +11,22 @@ import gleam/result
 
 /// Services are functions that take a request and return a response.
 /// They are the core building block of web applications.
-pub type Service(in, out) =
-  fn(Request(in)) -> Response(out)
+pub type Service(in, assigns, out) =
+  fn(Request(in, assigns)) -> Response(out)
 
 /// Middleware are functions that take a before req/res and return a 
 /// new req/res. They are used to transform requests and responses.
-pub type Middleware(before_req, before_resp, after_req, after_resp) =
-  fn(Service(before_req, before_resp)) -> Service(after_req, after_resp)
+pub type Middleware(before_req, assigns, before_resp, after_req, after_resp) =
+  fn(Service(before_req, assigns, before_resp)) ->
+    Service(after_req, assigns, after_resp)
 
 /// A middleware that transforms the response body returned by the service using
 /// a given function.
 ///
 pub fn map_response_body(
-  service: Service(req, a),
-  with mapper: fn(a) -> b,
-) -> Service(req, b) {
+  service: Service(req, assigns, resp),
+  with mapper: fn(resp) -> b,
+) -> Service(req, assigns, b) {
   fn(req) {
     req
     |> service
@@ -36,10 +37,10 @@ pub fn map_response_body(
 /// A middleware that prepends a header to the request.
 ///
 pub fn prepend_response_header(
-  service: Service(req, resp),
+  service: Service(req, assigns, resp),
   key: String,
   value: String,
-) -> Service(req, resp) {
+) -> Service(req, assigns, resp) {
   fn(req) {
     req
     |> service
@@ -47,14 +48,16 @@ pub fn prepend_response_header(
   }
 }
 
-fn ensure_post(req: Request(a)) {
+fn ensure_post(req: Request(body, assigns)) {
   case req.method {
     Post -> Ok(req)
     _ -> Error(Nil)
   }
 }
 
-fn get_override_method(request: Request(t)) -> Result(http.Method, Nil) {
+fn get_override_method(
+  request: Request(body, assigns),
+) -> Result(http.Method, Nil) {
   use query_params <- result.then(request.get_query(request))
   use method <- result.then(list.key_find(query_params, "_method"))
   use method <- result.then(http.parse_method(method))
@@ -78,7 +81,9 @@ fn get_override_method(request: Request(t)) -> Result(http.Method, Nil) {
 ///      <button type="submit">Delete item</button>
 ///    </form>
 ///
-pub fn method_override(service: Service(req, resp)) -> Service(req, resp) {
+pub fn method_override(
+  service: Service(req, assigns, resp),
+) -> Service(req, assigns, resp) {
   fn(request) {
     request
     |> ensure_post

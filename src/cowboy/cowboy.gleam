@@ -31,16 +31,16 @@ type CowboyRoutes =
 
 /// A Route can either be a service (a function that handles a request and response)
 /// or a router which is expanded into a list of services.
-pub type Route(req, res) {
-  ServiceRoute(Service(req, res))
-  RouterRoute(Routes(req, res))
+pub type Route(req, assigns, res) {
+  ServiceRoute(Service(req, assigns, res))
+  RouterRoute(Routes(req, assigns, res))
   StaticRoute(String, Static)
 }
 
 /// Routes are the mapping between a path and the route. 
 /// For example `/hello` -> `hello_service`
-pub type Routes(req, res) =
-  OrderedMap(String, Route(req, res))
+pub type Routes(req, assigns, res) =
+  OrderedMap(String, Route(req, assigns, res))
 
 external type ModuleName
 
@@ -57,7 +57,7 @@ external fn erlang_cowboy_static() -> CowboyStatic =
 
 /// Takes a list of route structures and compiles them into a cowboy router.
 /// 
-pub fn router(routes: Routes(req, res)) -> CowboyRouter {
+pub fn router(routes: Routes(req, assigns, res)) -> CowboyRouter {
   let underscore = atom.create_from_string("_")
 
   let cowboy_routes =
@@ -184,7 +184,7 @@ fn cowboy_format_headers(headers: List(Header)) -> Map(String, Dynamic) {
 }
 
 fn service_to_handler(
-  service: Service(req, res),
+  service: Service(req, assigns, res),
 ) -> fn(CowboyRequest, Params) -> CowboyRequest {
   fn(request, params) {
     let #(body, request) = get_body(request)
@@ -199,6 +199,7 @@ fn service_to_handler(
         query: get_query(request),
         scheme: get_scheme(request),
         params: params,
+        assigns: None,
       ))
     let status = response.status
 

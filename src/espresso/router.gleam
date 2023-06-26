@@ -19,17 +19,17 @@ pub type Method {
   OPTIONS
 }
 
-pub type Handler(req, res) {
-  ServiceHandler(OrderedMap(Method, Service(req, res)))
-  RouterHandler(Router(req, res))
+pub type Handler(req, assigns, res) {
+  ServiceHandler(OrderedMap(Method, Service(req, assigns, res)))
+  RouterHandler(Router(req, assigns, res))
   StaticHandler(String, Static)
 }
 
-pub type Router(req, res) {
+pub type Router(req, assigns, res) {
   Router(
-    middleware: Middleware(req, res, req, res),
-    handlers: OrderedMap(String, Handler(req, res)),
-    not_found: Service(req, res),
+    middleware: Middleware(req, assigns, res, req, res),
+    handlers: OrderedMap(String, Handler(req, assigns, res)),
+    not_found: Service(req, assigns, res),
   )
 }
 
@@ -83,17 +83,17 @@ pub fn new() {
 /// ```
 /// 
 pub fn middleware(
-  router: Router(req, res),
-  middleware: Middleware(req, res, req, res),
+  router: Router(req, assigns, res),
+  middleware: Middleware(req, assigns, res, req, res),
 ) {
   Router(..router, middleware: middleware)
 }
 
 fn add_service_handler(
-  router: Router(req, res),
+  router: Router(req, assigns, res),
   path: String,
   method: Method,
-  handler: Service(req, res),
+  handler: Service(req, assigns, res),
 ) {
   let handlers =
     ordered_map.update(
@@ -118,42 +118,42 @@ fn add_service_handler(
 }
 
 pub fn get(
-  router: Router(req, res),
+  router: Router(req, assigns, res),
   path: String,
-  handler: Service(req, res),
-) -> Router(req, res) {
+  handler: Service(req, assigns, res),
+) -> Router(req, assigns, res) {
   add_service_handler(router, path, GET, handler)
 }
 
 pub fn post(
-  router: Router(req, res),
+  router: Router(req, assigns, res),
   path: String,
-  handler: Service(req, res),
-) -> Router(req, res) {
+  handler: Service(req, assigns, res),
+) -> Router(req, assigns, res) {
   add_service_handler(router, path, POST, handler)
 }
 
 pub fn put(
-  router: Router(req, res),
+  router: Router(req, assigns, res),
   path: String,
-  handler: Service(req, res),
-) -> Router(req, res) {
+  handler: Service(req, assigns, res),
+) -> Router(req, assigns, res) {
   add_service_handler(router, path, PUT, handler)
 }
 
 pub fn patch(
-  router: Router(req, res),
+  router: Router(req, assigns, res),
   path: String,
-  handler: Service(req, res),
-) -> Router(req, res) {
+  handler: Service(req, assigns, res),
+) -> Router(req, assigns, res) {
   add_service_handler(router, path, PATCH, handler)
 }
 
 pub fn delete(
-  router: Router(req, res),
+  router: Router(req, assigns, res),
   path: String,
-  handler: Service(req, res),
-) -> Router(req, res) {
+  handler: Service(req, assigns, res),
+) -> Router(req, assigns, res) {
   add_service_handler(router, path, DELETE, handler)
 }
 
@@ -176,28 +176,28 @@ pub fn delete(
 /// ```
 /// 
 pub fn static(
-  router: Router(req, res),
+  router: Router(req, assigns, res),
   path: String,
   config: Static,
-) -> Router(req, res) {
+) -> Router(req, assigns, res) {
   let handlers =
     ordered_map.insert(router.handlers, path, StaticHandler(path, config))
   Router(..router, handlers: handlers)
 }
 
 pub fn router(
-  router: Router(req, res),
+  router: Router(req, assigns, res),
   path: String,
-  subrouter: Router(req, res),
-) -> Router(req, res) {
+  subrouter: Router(req, assigns, res),
+) -> Router(req, assigns, res) {
   Router(..router, handlers: expand(path, router.handlers, subrouter))
 }
 
 pub fn expand(
   path: String,
-  handlers: OrderedMap(String, Handler(req, res)),
-  router: Router(req, res),
-) -> OrderedMap(String, Handler(req, res)) {
+  handlers: OrderedMap(String, Handler(req, assigns, res)),
+  router: Router(req, assigns, res),
+) -> OrderedMap(String, Handler(req, assigns, res)) {
   ordered_map.fold(
     router.handlers,
     handlers,
@@ -218,10 +218,10 @@ pub fn expand(
 }
 
 pub fn handle(
-  router: Router(req, res),
-  routes: OrderedMap(Method, Service(req, res)),
-) -> Service(req, res) {
-  fn(req: Request(req)) -> Response(res) {
+  router: Router(req, assigns, res),
+  routes: OrderedMap(Method, Service(req, assigns, res)),
+) -> Service(req, assigns, res) {
+  fn(req: Request(req, assigns)) -> Response(res) {
     let method = req_to_method(req)
     let handler = ordered_map.get(routes, method)
 
@@ -233,10 +233,10 @@ pub fn handle(
 }
 
 pub fn to_routes(
-  router: Router(req, res),
-) -> OrderedMap(String, Route(req, res)) {
+  router: Router(req, assigns, res),
+) -> OrderedMap(String, Route(req, assigns, res)) {
   router.handlers
-  |> list.map(fn(route_handler: #(String, Handler(req, res))) {
+  |> list.map(fn(route_handler: #(String, Handler(req, assigns, res))) {
     let #(path, handler) = route_handler
     let service = case handler {
       ServiceHandler(routes) -> {
@@ -250,7 +250,7 @@ pub fn to_routes(
   })
 }
 
-fn req_to_method(req: Request(a)) {
+fn req_to_method(req: Request(body, assigns)) {
   case req.method {
     http.Get -> GET
     http.Post -> POST

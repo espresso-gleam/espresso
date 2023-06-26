@@ -1,5 +1,5 @@
 name = "espresso"
-version = "0.0.4"
+version = "0.0.5"
 description = "A simple http server and router built on top of erlang cowboy"
 
 # Fill out these fields if you intend to generate HTML documentation or publish

@@ -16,7 +16,7 @@ pub type Params =
 /// Contains most of the pieces of a URI but additionally contains
 /// the HTTP method, headers, and body. Also contains the params which
 /// are the parsed elements of a router path.
-pub type Request(body) {
+pub type Request(body, assigns) {
   Request(
     method: Method,
     headers: List(Header),
@@ -27,6 +27,7 @@ pub type Request(body) {
     path: String,
     query: Option(String),
     params: Params,
+    assigns: Option(assigns),
   )
 }
 
@@ -40,7 +41,7 @@ pub type Request(body) {
 ///   let id = req |> request.get_param("id") |> option.unwrap("")
 /// }
 /// ```
-pub fn get_param(req: Request(a), name: String) -> Option(String) {
+pub fn get_param(req: Request(body, assigns), name: String) -> Option(String) {
   let result = list.key_find(req.params, name)
 
   case result {
@@ -51,7 +52,7 @@ pub fn get_param(req: Request(a), name: String) -> Option(String) {
 
 /// Return the uri that a request was sent to.
 ///
-pub fn to_uri(request: Request(a)) -> Uri {
+pub fn to_uri(request: Request(body, assigns)) -> Uri {
   Uri(
     scheme: option.Some(http.scheme_to_string(request.scheme)),
     userinfo: option.None,
@@ -65,7 +66,7 @@ pub fn to_uri(request: Request(a)) -> Uri {
 
 /// Construct a request from a URI.
 ///
-pub fn from_uri(uri: Uri) -> Result(Request(String), Nil) {
+pub fn from_uri(uri: Uri) -> Result(Request(String, assigns), Nil) {
   use scheme <- result.then(
     uri.scheme
     |> option.unwrap("")
@@ -86,6 +87,7 @@ pub fn from_uri(uri: Uri) -> Result(Request(String), Nil) {
       path: uri.path,
       query: uri.query,
       params: [],
+      assigns: None,
     )
   Ok(req)
 }
@@ -94,7 +96,10 @@ pub fn from_uri(uri: Uri) -> Result(Request(String), Nil) {
 ///
 /// If the request does not have that header then `Error(Nil)` is returned.
 ///
-pub fn get_header(request: Request(body), key: String) -> Result(String, Nil) {
+pub fn get_header(
+  request: Request(body, assigns),
+  key: String,
+) -> Result(String, Nil) {
   list.key_find(request.headers, string.lowercase(key))
 }
 
@@ -102,10 +107,10 @@ pub fn get_header(request: Request(body), key: String) -> Result(String, Nil) {
 ///
 /// If already present, it is replaced.
 pub fn set_header(
-  request: Request(body),
+  request: Request(body, assigns),
   key: String,
   value: String,
-) -> Request(body) {
+) -> Request(body, assigns) {
   let headers = list.key_set(request.headers, string.lowercase(key), value)
   Request(..request, headers: headers)
 }
@@ -115,10 +120,10 @@ pub fn set_header(
 /// Similar to `set_header` except if the header already exists it prepends
 /// another header with the same key.
 pub fn prepend_header(
-  request: Request(body),
+  request: Request(body, assigns),
   key: String,
   value: String,
-) -> Request(body) {
+) -> Request(body, assigns) {
   let headers = [#(string.lowercase(key), value), ..request.headers]
   Request(..request, headers: headers)
 }
@@ -126,7 +131,10 @@ pub fn prepend_header(
 // TODO: record update syntax, which can't be done currently as body type changes
 /// Set the body of the request, overwriting any existing body.
 ///
-pub fn set_body(req: Request(old_body), body: new_body) -> Request(new_body) {
+pub fn set_body(
+  req: Request(old_body, assigns),
+  body: new_body,
+) -> Request(new_body, assigns) {
   let Request(
     method: method,
     headers: headers,
@@ -136,6 +144,7 @@ pub fn set_body(req: Request(old_body), body: new_body) -> Request(new_body) {
     path: path,
     query: query,
     params: params,
+    assigns: assigns,
     ..,
   ) = req
   Request(
@@ -148,15 +157,16 @@ pub fn set_body(req: Request(old_body), body: new_body) -> Request(new_body) {
     path: path,
     query: query,
     params: params,
+    assigns: assigns,
   )
 }
 
 /// Update the body of a request using a given function.
 ///
 pub fn map(
-  request: Request(old_body),
+  request: Request(old_body, assigns),
   transform: fn(old_body) -> new_body,
-) -> Request(new_body) {
+) -> Request(new_body, assigns) {
   request.body
   |> transform
   |> set_body(request, _)
@@ -164,13 +174,15 @@ pub fn map(
 
 /// Return the non-empty segments of a request path.
 ///
-pub fn path_segments(request: Request(body)) -> List(String) {
+pub fn path_segments(request: Request(body, assigns)) -> List(String) {
   request.path
   |> uri.path_segments
 }
 
 /// Decode the query of a request.
-pub fn get_query(request: Request(body)) -> Result(List(#(String, String)), Nil) {
+pub fn get_query(
+  request: Request(body, assigns),
+) -> Result(List(#(String, String)), Nil) {
   case request.query {
     option.Some(query_string) -> uri.parse_query(query_string)
     option.None -> Ok([])
@@ -181,9 +193,9 @@ pub fn get_query(request: Request(body)) -> Result(List(#(String, String)), Nil)
 /// Set the query of the request.
 ///
 pub fn set_query(
-  req: Request(body),
+  req: Request(body, assigns),
   query: List(#(String, String)),
-) -> Request(body) {
+) -> Request(body, assigns) {
   let pair = fn(t: #(String, String)) {
     string_builder.from_strings([t.0, "=", t.1])
   }
@@ -199,30 +211,34 @@ pub fn set_query(
 
 /// Set the method of the request.
 ///
-pub fn set_method(req: Request(body), method: Method) -> Request(body) {
+pub fn set_method(
+  req: Request(body, assigns),
+  method: Method,
+) -> Request(body, assigns) {
   Request(..req, method: method)
 }
 
 /// A request with commonly used default values. This request can be used as
 /// an initial value and then update to create the desired request.
 ///
-pub fn new() -> Request(String) {
+pub fn new() -> Request(String, assigns) {
   Request(
     method: Get,
     headers: [],
     body: "",
     scheme: http.Https,
     host: "localhost",
-    port: option.None,
+    port: None,
     path: "",
-    query: option.None,
+    query: None,
     params: [],
+    assigns: None,
   )
 }
 
 /// Construct a request from a URL string
 ///
-pub fn to(url: String) -> Result(Request(String), Nil) {
+pub fn to(url: String) -> Result(Request(String, assigns), Nil) {
   url
   |> uri.parse
   |> result.then(from_uri)
@@ -230,32 +246,44 @@ pub fn to(url: String) -> Result(Request(String), Nil) {
 
 /// Set the scheme (protocol) of the request.
 ///
-pub fn set_scheme(req: Request(body), scheme: Scheme) -> Request(body) {
+pub fn set_scheme(
+  req: Request(body, assigns),
+  scheme: Scheme,
+) -> Request(body, assigns) {
   Request(..req, scheme: scheme)
 }
 
 /// Set the method of the request.
 ///
-pub fn set_host(req: Request(body), host: String) -> Request(body) {
+pub fn set_host(
+  req: Request(body, assigns),
+  host: String,
+) -> Request(body, assigns) {
   Request(..req, host: host)
 }
 
 /// Set the port of the request.
 ///
-pub fn set_port(req: Request(body), port: Int) -> Request(body) {
+pub fn set_port(
+  req: Request(body, assigns),
+  port: Int,
+) -> Request(body, assigns) {
   Request(..req, port: option.Some(port))
 }
 
 /// Set the path of the request.
 ///
-pub fn set_path(req: Request(body), path: String) -> Request(body) {
+pub fn set_path(
+  req: Request(body, assigns),
+  path: String,
+) -> Request(body, assigns) {
   Request(..req, path: path)
 }
 
 /// Send a cookie with a request
 ///
 /// Multiple cookies are added to the same cookie header.
-pub fn set_cookie(req: Request(body), name: String, value: String) {
+pub fn set_cookie(req: Request(body, assigns), name: String, value: String) {
   let new_cookie_string = string.join([name, value], "=")
 
   let #(cookies_string, headers) = case list.key_pop(req.headers, "cookie") {
@@ -286,4 +314,43 @@ pub fn get_cookies(req) -> List(#(String, String)) {
     }
   })
   |> list.flatten()
+}
+
+/// Set the assigns of the request, overwriting any existing assigns.
+///
+/// # Examples
+/// 
+/// ```gleam
+/// type Assigns {
+///  Assigns(authorized: Bool)
+/// }
+/// 
+/// let router =
+///    router.new()
+///    |> router.middleware(fn(next: Service(BitString, Assigns, BitBuilder)) {
+///      fn(req: Request(BitString, Assigns)) {
+///        let auth = request.get_header(req, "authorization")
+///        case auth {
+///          Ok("Basic OnN1cGVyc2VjcmV0") ->
+///            req
+///            |> assign(Assigns(authorized: True))
+///            |> next()
+///          _ -> send(401, "Unauthorized")
+///       }
+///      }
+///    })
+///    |> get(
+///      "/",
+///      fn(_req: Request(BitString, Assigns)) { 
+///          // req.assigns here will be Some(Assigns(authorized: True))
+///          // if the basic auth password is "supersecret"
+///          send(202, "Main Route") 
+///      }    
+///   )
+/// ```
+pub fn assign(
+  req: Request(body, assigns),
+  assigns: assigns,
+) -> Request(body, assigns) {
+  Request(..req, assigns: Some(assigns))
 }

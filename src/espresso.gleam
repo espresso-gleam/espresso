@@ -44,7 +44,7 @@ external fn exit(i32) -> Nil =
 /// }
 /// ```
 /// 
-pub fn start(r: Router(req, res)) {
+pub fn start(r: Router(req, assigns, res)) {
   let port = get_port()
   case cowboy.start(cowboy.router(to_routes(r)), on_port: port) {
     Ok(_) -> process.sleep_forever()
