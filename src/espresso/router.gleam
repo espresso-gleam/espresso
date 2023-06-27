@@ -1,9 +1,12 @@
-import cowboy/cowboy.{Route, RouterRoute, ServiceRoute, StaticRoute}
+import cowboy/cowboy.{
+  Route, RouterRoute, ServiceRoute, StaticRoute, WebsocketRoute,
+}
 import espresso/ordered_map.{OrderedMap}
 import espresso/request.{Request}
 import espresso/response.{Response}
 import espresso/service.{Middleware, Service}
 import espresso/static.{Static}
+import espresso/websocket.{Websocket}
 import gleam/http
 import gleam/list
 import gleam/option.{None, Some}
@@ -23,6 +26,7 @@ pub type Handler(req, assigns, res) {
   ServiceHandler(OrderedMap(Method, Service(req, assigns, res)))
   RouterHandler(Router(req, assigns, res))
   StaticHandler(String, Static)
+  WebsocketHandler(Websocket)
 }
 
 pub type Router(req, assigns, res) {
@@ -157,6 +161,45 @@ pub fn delete(
   add_service_handler(router, path, DELETE, handler)
 }
 
+/// Adds a websocket handler to a path 
+/// 
+/// # Example
+/// 
+/// ```gleam
+/// import espresso/router.{websocket}
+/// import espresso/websocket.{Websocket}
+///
+/// pub fn main() {
+///  let router =
+///    router.new()
+///    |> websocket(
+///      "/socket",
+///      fn(frame) {
+///        case frame {
+///          "chat:" <> _message -> websocket.Reply("Hello")
+///          "ping" -> websocket.Reply("pong")
+///          "actual_ping" -> websocket.Ping("")
+///          "pong" -> websocket.Pong("")
+///          _ -> websocket.Close("")
+///        }
+///      },
+///    )
+///
+///  start(router)
+///}
+/// ```
+/// 
+/// 
+pub fn websocket(
+  router: Router(req, assigns, res),
+  path: String,
+  handler: Websocket,
+) -> Router(req, assigns, res) {
+  let handlers =
+    ordered_map.insert(router.handlers, path, WebsocketHandler(handler))
+  Router(..router, handlers: handlers)
+}
+
 /// Handles a request for a given path and returns static files
 /// Currently only supports File and Directory
 /// 
@@ -212,6 +255,9 @@ pub fn expand(
         StaticHandler(path, config) -> {
           ordered_map.insert(acc, path <> key, StaticHandler(path, config))
         }
+        WebsocketHandler(handler) -> {
+          ordered_map.insert(acc, path <> key, WebsocketHandler(handler))
+        }
       }
     },
   )
@@ -245,6 +291,9 @@ pub fn to_routes(
       }
       RouterHandler(router) -> RouterRoute(to_routes(router))
       StaticHandler(path, config) -> StaticRoute(path, config)
+      WebsocketHandler(handler) -> {
+        WebsocketRoute(handler)
+      }
     }
     #(path, service)
   })

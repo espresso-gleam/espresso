@@ -9,6 +9,7 @@ import espresso/request.{Params, Request}
 import espresso/response
 import espresso/service.{Service}
 import espresso/static.{Static}
+import espresso/websocket.{Websocket}
 import gleam/dynamic.{Dynamic}
 import gleam/erlang/atom
 import gleam/erlang/process.{Pid}
@@ -35,6 +36,7 @@ pub type Route(req, assigns, res) {
   ServiceRoute(Service(req, assigns, res))
   RouterRoute(Routes(req, assigns, res))
   StaticRoute(String, Static)
+  WebsocketRoute(Websocket)
 }
 
 /// Routes are the mapping between a path and the route. 
@@ -46,6 +48,8 @@ external type ModuleName
 
 external type CowboyStatic
 
+external type WebsocketModule
+
 external fn erlang_module_name() -> ModuleName =
   "gleam_cowboy_native" "module_name"
 
@@ -54,6 +58,9 @@ external fn erlang_router(CowboyRoutes) -> CowboyRouter =
 
 external fn erlang_cowboy_static() -> CowboyStatic =
   "gleam_cowboy_native" "static_module"
+
+external fn erlang_cowboy_websocket() -> WebsocketModule =
+  "gleam_websocket_native" "module_name"
 
 /// Takes a list of route structures and compiles them into a cowboy router.
 /// 
@@ -79,6 +86,11 @@ pub fn router(routes: Routes(req, assigns, res)) -> CowboyRouter {
           dynamic.from(path),
           dynamic.from(erlang_cowboy_static()),
           dynamic.from(config),
+        )
+        WebsocketRoute(service) -> #(
+          dynamic.from(path),
+          dynamic.from(erlang_cowboy_websocket()),
+          dynamic.from(service),
         )
       }
     })
