@@ -2,6 +2,7 @@
 //// 
 //// Forked from: https://github.com/gleam-lang/http/blob/v3.2.0/src/gleam/http/response.gleam
 
+import espresso/html.{Element}
 import gleam/bit_builder.{BitBuilder}
 import gleam/http.{Header}
 import gleam/http/cookie
@@ -217,6 +218,27 @@ pub fn json2(res: Response(a), data: json.Json) -> Response(BitBuilder) {
 /// ```
 pub fn send(status: Int, body: String) -> Response(BitBuilder) {
   status
+  |> new()
+  |> set_body(bit_builder.from_string(body))
+}
+
+/// sends a 200 response code with html rendered by the `html` module
+/// 
+/// # Example
+/// 
+/// ```gleam
+/// import espresso/request.{Request}
+/// import espresso/html.{html, body, head, text}
+/// 
+/// fn handler(_req: Request) {
+///  html([], [head([], []), body([], [text("Hello World")])])
+///  |> render()
+/// }
+/// ```
+pub fn render(body: Element) -> Response(BitBuilder) {
+  let body = html.to_string(body)
+
+  200
   |> new()
   |> set_body(bit_builder.from_string(body))
 }
