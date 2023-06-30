@@ -8,6 +8,7 @@ import espresso/ordered_map.{OrderedMap}
 import espresso/request.{Params, Request}
 import espresso/response
 import espresso/service.{Service}
+import espresso/session
 import espresso/static.{Static}
 import espresso/websocket.{Websocket}
 import gleam/dynamic.{Dynamic}
@@ -32,17 +33,17 @@ type CowboyRoutes =
 
 /// A Route can either be a service (a function that handles a request and response)
 /// or a router which is expanded into a list of services.
-pub type Route(req, assigns, res) {
-  ServiceRoute(Service(req, assigns, res))
-  RouterRoute(Routes(req, assigns, res))
+pub type Route(req, assigns, session, res) {
+  ServiceRoute(Service(req, assigns, session, res))
+  RouterRoute(Routes(req, assigns, session, res))
   StaticRoute(String, Static)
   WebsocketRoute(Websocket)
 }
 
 /// Routes are the mapping between a path and the route. 
 /// For example `/hello` -> `hello_service`
-pub type Routes(req, assigns, res) =
-  OrderedMap(String, Route(req, assigns, res))
+pub type Routes(req, assigns, session, res) =
+  OrderedMap(String, Route(req, assigns, session, res))
 
 external type ModuleName
 
@@ -64,7 +65,7 @@ external fn erlang_cowboy_websocket() -> WebsocketModule =
 
 /// Takes a list of route structures and compiles them into a cowboy router.
 /// 
-pub fn router(routes: Routes(req, assigns, res)) -> CowboyRouter {
+pub fn router(routes: Routes(req, assigns, session, res)) -> CowboyRouter {
   let underscore = atom.create_from_string("_")
 
   let cowboy_routes =
@@ -196,12 +197,12 @@ fn cowboy_format_headers(headers: List(Header)) -> Map(String, Dynamic) {
 }
 
 fn service_to_handler(
-  service: Service(req, assigns, res),
+  service: Service(req, assigns, session, res),
 ) -> fn(CowboyRequest, Params) -> CowboyRequest {
   fn(request, params) {
     let #(body, request) = get_body(request)
     let response =
-      service(Request(
+      Request(
         body: body,
         headers: get_headers(request),
         host: get_host(request),
@@ -212,7 +213,10 @@ fn service_to_handler(
         scheme: get_scheme(request),
         params: params,
         assigns: None,
-      ))
+        session: Error(session.Unset),
+      )
+      |> request.load_session()
+      |> service()
     let status = response.status
 
     let headers = cowboy_format_headers(response.headers)

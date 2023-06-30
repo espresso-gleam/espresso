@@ -1,5 +1,6 @@
 // This is a fork of https://github.com/gleam-lang/http/blob/main/src/gleam/http/request.gleam
 // it has additional things like "Params"
+import espresso/session.{Session}
 import gleam/http.{Get, Header, Method, Scheme}
 import gleam/http/cookie
 import gleam/list
@@ -16,7 +17,7 @@ pub type Params =
 /// Contains most of the pieces of a URI but additionally contains
 /// the HTTP method, headers, and body. Also contains the params which
 /// are the parsed elements of a router path.
-pub type Request(body, assigns) {
+pub type Request(body, assigns, session) {
   Request(
     method: Method,
     headers: List(Header),
@@ -28,6 +29,7 @@ pub type Request(body, assigns) {
     query: Option(String),
     params: Params,
     assigns: Option(assigns),
+    session: Session(session),
   )
 }
 
@@ -41,7 +43,10 @@ pub type Request(body, assigns) {
 ///   let id = req |> request.get_param("id") |> option.unwrap("")
 /// }
 /// ```
-pub fn get_param(req: Request(body, assigns), name: String) -> Option(String) {
+pub fn get_param(
+  req: Request(body, assigns, session),
+  name: String,
+) -> Option(String) {
   let result = list.key_find(req.params, name)
 
   case result {
@@ -52,7 +57,7 @@ pub fn get_param(req: Request(body, assigns), name: String) -> Option(String) {
 
 /// Return the uri that a request was sent to.
 ///
-pub fn to_uri(request: Request(body, assigns)) -> Uri {
+pub fn to_uri(request: Request(body, assigns, session)) -> Uri {
   Uri(
     scheme: option.Some(http.scheme_to_string(request.scheme)),
     userinfo: option.None,
@@ -66,7 +71,7 @@ pub fn to_uri(request: Request(body, assigns)) -> Uri {
 
 /// Construct a request from a URI.
 ///
-pub fn from_uri(uri: Uri) -> Result(Request(String, assigns), Nil) {
+pub fn from_uri(uri: Uri) -> Result(Request(String, assigns, session), Nil) {
   use scheme <- result.then(
     uri.scheme
     |> option.unwrap("")
@@ -88,6 +93,7 @@ pub fn from_uri(uri: Uri) -> Result(Request(String, assigns), Nil) {
       query: uri.query,
       params: [],
       assigns: None,
+      session: Error(session.Unset),
     )
   Ok(req)
 }
@@ -97,7 +103,7 @@ pub fn from_uri(uri: Uri) -> Result(Request(String, assigns), Nil) {
 /// If the request does not have that header then `Error(Nil)` is returned.
 ///
 pub fn get_header(
-  request: Request(body, assigns),
+  request: Request(body, assigns, session),
   key: String,
 ) -> Result(String, Nil) {
   list.key_find(request.headers, string.lowercase(key))
@@ -107,10 +113,10 @@ pub fn get_header(
 ///
 /// If already present, it is replaced.
 pub fn set_header(
-  request: Request(body, assigns),
+  request: Request(body, assigns, session),
   key: String,
   value: String,
-) -> Request(body, assigns) {
+) -> Request(body, assigns, session) {
   let headers = list.key_set(request.headers, string.lowercase(key), value)
   Request(..request, headers: headers)
 }
@@ -120,10 +126,10 @@ pub fn set_header(
 /// Similar to `set_header` except if the header already exists it prepends
 /// another header with the same key.
 pub fn prepend_header(
-  request: Request(body, assigns),
+  request: Request(body, assigns, session),
   key: String,
   value: String,
-) -> Request(body, assigns) {
+) -> Request(body, assigns, session) {
   let headers = [#(string.lowercase(key), value), ..request.headers]
   Request(..request, headers: headers)
 }
@@ -132,9 +138,9 @@ pub fn prepend_header(
 /// Set the body of the request, overwriting any existing body.
 ///
 pub fn set_body(
-  req: Request(old_body, assigns),
+  req: Request(old_body, assigns, session),
   body: new_body,
-) -> Request(new_body, assigns) {
+) -> Request(new_body, assigns, session) {
   let Request(
     method: method,
     headers: headers,
@@ -145,6 +151,7 @@ pub fn set_body(
     query: query,
     params: params,
     assigns: assigns,
+    session: session,
     ..,
   ) = req
   Request(
@@ -158,15 +165,16 @@ pub fn set_body(
     query: query,
     params: params,
     assigns: assigns,
+    session: session,
   )
 }
 
 /// Update the body of a request using a given function.
 ///
 pub fn map(
-  request: Request(old_body, assigns),
+  request: Request(old_body, assigns, session),
   transform: fn(old_body) -> new_body,
-) -> Request(new_body, assigns) {
+) -> Request(new_body, assigns, session) {
   request.body
   |> transform
   |> set_body(request, _)
@@ -174,14 +182,14 @@ pub fn map(
 
 /// Return the non-empty segments of a request path.
 ///
-pub fn path_segments(request: Request(body, assigns)) -> List(String) {
+pub fn path_segments(request: Request(body, assigns, session)) -> List(String) {
   request.path
   |> uri.path_segments
 }
 
 /// Decode the query of a request.
 pub fn get_query(
-  request: Request(body, assigns),
+  request: Request(body, assigns, session),
 ) -> Result(List(#(String, String)), Nil) {
   case request.query {
     option.Some(query_string) -> uri.parse_query(query_string)
@@ -193,9 +201,9 @@ pub fn get_query(
 /// Set the query of the request.
 ///
 pub fn set_query(
-  req: Request(body, assigns),
+  req: Request(body, assigns, session),
   query: List(#(String, String)),
-) -> Request(body, assigns) {
+) -> Request(body, assigns, session) {
   let pair = fn(t: #(String, String)) {
     string_builder.from_strings([t.0, "=", t.1])
   }
@@ -212,16 +220,16 @@ pub fn set_query(
 /// Set the method of the request.
 ///
 pub fn set_method(
-  req: Request(body, assigns),
+  req: Request(body, assigns, session),
   method: Method,
-) -> Request(body, assigns) {
+) -> Request(body, assigns, session) {
   Request(..req, method: method)
 }
 
 /// A request with commonly used default values. This request can be used as
 /// an initial value and then update to create the desired request.
 ///
-pub fn new() -> Request(String, assigns) {
+pub fn new() -> Request(String, assigns, session) {
   Request(
     method: Get,
     headers: [],
@@ -233,12 +241,13 @@ pub fn new() -> Request(String, assigns) {
     query: None,
     params: [],
     assigns: None,
+    session: Error(session.Unset),
   )
 }
 
 /// Construct a request from a URL string
 ///
-pub fn to(url: String) -> Result(Request(String, assigns), Nil) {
+pub fn to(url: String) -> Result(Request(String, assigns, session), Nil) {
   url
   |> uri.parse
   |> result.then(from_uri)
@@ -247,43 +256,47 @@ pub fn to(url: String) -> Result(Request(String, assigns), Nil) {
 /// Set the scheme (protocol) of the request.
 ///
 pub fn set_scheme(
-  req: Request(body, assigns),
+  req: Request(body, assigns, session),
   scheme: Scheme,
-) -> Request(body, assigns) {
+) -> Request(body, assigns, session) {
   Request(..req, scheme: scheme)
 }
 
 /// Set the method of the request.
 ///
 pub fn set_host(
-  req: Request(body, assigns),
+  req: Request(body, assigns, session),
   host: String,
-) -> Request(body, assigns) {
+) -> Request(body, assigns, session) {
   Request(..req, host: host)
 }
 
 /// Set the port of the request.
 ///
 pub fn set_port(
-  req: Request(body, assigns),
+  req: Request(body, assigns, session),
   port: Int,
-) -> Request(body, assigns) {
+) -> Request(body, assigns, session) {
   Request(..req, port: option.Some(port))
 }
 
 /// Set the path of the request.
 ///
 pub fn set_path(
-  req: Request(body, assigns),
+  req: Request(body, assigns, session),
   path: String,
-) -> Request(body, assigns) {
+) -> Request(body, assigns, session) {
   Request(..req, path: path)
 }
 
 /// Send a cookie with a request
 ///
 /// Multiple cookies are added to the same cookie header.
-pub fn set_cookie(req: Request(body, assigns), name: String, value: String) {
+pub fn set_cookie(
+  req: Request(body, assigns, session),
+  name: String,
+  value: String,
+) {
   let new_cookie_string = string.join([name, value], "=")
 
   let #(cookies_string, headers) = case list.key_pop(req.headers, "cookie") {
@@ -349,8 +362,20 @@ pub fn get_cookies(req) -> List(#(String, String)) {
 ///   )
 /// ```
 pub fn assign(
-  req: Request(body, assigns),
+  req: Request(body, assigns, session),
   assigns: assigns,
-) -> Request(body, assigns) {
+) -> Request(body, assigns, session) {
   Request(..req, assigns: Some(assigns))
+}
+
+pub fn load_session(
+  req: Request(body, assigns, session),
+) -> Request(body, assigns, session) {
+  case list.key_find(get_cookies(req), session.session_key()) {
+    Ok(session) -> {
+      let session = session.decode(session)
+      Request(..req, session: session)
+    }
+    _ -> req
+  }
 }
