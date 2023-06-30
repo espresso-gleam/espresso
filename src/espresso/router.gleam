@@ -22,18 +22,18 @@ pub type Method {
   OPTIONS
 }
 
-pub type Handler(req, assigns, res) {
-  ServiceHandler(OrderedMap(Method, Service(req, assigns, res)))
-  RouterHandler(Router(req, assigns, res))
+pub type Handler(req, assigns, session, res) {
+  ServiceHandler(OrderedMap(Method, Service(req, assigns, session, res)))
+  RouterHandler(Router(req, assigns, session, res))
   StaticHandler(String, Static)
   WebsocketHandler(Websocket)
 }
 
-pub type Router(req, assigns, res) {
+pub type Router(req, assigns, session, res) {
   Router(
-    middleware: Middleware(req, assigns, res, req, res),
-    handlers: OrderedMap(String, Handler(req, assigns, res)),
-    not_found: Service(req, assigns, res),
+    middleware: Middleware(req, assigns, session, res, req, res),
+    handlers: OrderedMap(String, Handler(req, assigns, session, res)),
+    not_found: Service(req, assigns, session, res),
   )
 }
 
@@ -87,17 +87,17 @@ pub fn new() {
 /// ```
 /// 
 pub fn middleware(
-  router: Router(req, assigns, res),
-  middleware: Middleware(req, assigns, res, req, res),
+  router: Router(req, assigns, session, res),
+  middleware: Middleware(req, assigns, session, res, req, res),
 ) {
   Router(..router, middleware: middleware)
 }
 
 fn add_service_handler(
-  router: Router(req, assigns, res),
+  router: Router(req, assigns, session, res),
   path: String,
   method: Method,
-  handler: Service(req, assigns, res),
+  handler: Service(req, assigns, session, res),
 ) {
   let handlers =
     ordered_map.update(
@@ -122,42 +122,42 @@ fn add_service_handler(
 }
 
 pub fn get(
-  router: Router(req, assigns, res),
+  router: Router(req, assigns, session, res),
   path: String,
-  handler: Service(req, assigns, res),
-) -> Router(req, assigns, res) {
+  handler: Service(req, assigns, session, res),
+) -> Router(req, assigns, session, res) {
   add_service_handler(router, path, GET, handler)
 }
 
 pub fn post(
-  router: Router(req, assigns, res),
+  router: Router(req, assigns, session, res),
   path: String,
-  handler: Service(req, assigns, res),
-) -> Router(req, assigns, res) {
+  handler: Service(req, assigns, session, res),
+) -> Router(req, assigns, session, res) {
   add_service_handler(router, path, POST, handler)
 }
 
 pub fn put(
-  router: Router(req, assigns, res),
+  router: Router(req, assigns, session, res),
   path: String,
-  handler: Service(req, assigns, res),
-) -> Router(req, assigns, res) {
+  handler: Service(req, assigns, session, res),
+) -> Router(req, assigns, session, res) {
   add_service_handler(router, path, PUT, handler)
 }
 
 pub fn patch(
-  router: Router(req, assigns, res),
+  router: Router(req, assigns, session, res),
   path: String,
-  handler: Service(req, assigns, res),
-) -> Router(req, assigns, res) {
+  handler: Service(req, assigns, session, res),
+) -> Router(req, assigns, session, res) {
   add_service_handler(router, path, PATCH, handler)
 }
 
 pub fn delete(
-  router: Router(req, assigns, res),
+  router: Router(req, assigns, session, res),
   path: String,
-  handler: Service(req, assigns, res),
-) -> Router(req, assigns, res) {
+  handler: Service(req, assigns, session, res),
+) -> Router(req, assigns, session, res) {
   add_service_handler(router, path, DELETE, handler)
 }
 
@@ -191,10 +191,10 @@ pub fn delete(
 /// 
 /// 
 pub fn websocket(
-  router: Router(req, assigns, res),
+  router: Router(req, assigns, session, res),
   path: String,
   handler: Websocket,
-) -> Router(req, assigns, res) {
+) -> Router(req, assigns, session, res) {
   let handlers =
     ordered_map.insert(router.handlers, path, WebsocketHandler(handler))
   Router(..router, handlers: handlers)
@@ -219,28 +219,28 @@ pub fn websocket(
 /// ```
 /// 
 pub fn static(
-  router: Router(req, assigns, res),
+  router: Router(req, assigns, session, res),
   path: String,
   config: Static,
-) -> Router(req, assigns, res) {
+) -> Router(req, assigns, session, res) {
   let handlers =
     ordered_map.insert(router.handlers, path, StaticHandler(path, config))
   Router(..router, handlers: handlers)
 }
 
 pub fn router(
-  router: Router(req, assigns, res),
+  router: Router(req, assigns, session, res),
   path: String,
-  subrouter: Router(req, assigns, res),
-) -> Router(req, assigns, res) {
+  subrouter: Router(req, assigns, session, res),
+) -> Router(req, assigns, session, res) {
   Router(..router, handlers: expand(path, router.handlers, subrouter))
 }
 
 pub fn expand(
   path: String,
-  handlers: OrderedMap(String, Handler(req, assigns, res)),
-  router: Router(req, assigns, res),
-) -> OrderedMap(String, Handler(req, assigns, res)) {
+  handlers: OrderedMap(String, Handler(req, assigns, session, res)),
+  router: Router(req, assigns, session, res),
+) -> OrderedMap(String, Handler(req, assigns, session, res)) {
   ordered_map.fold(
     router.handlers,
     handlers,
@@ -264,10 +264,10 @@ pub fn expand(
 }
 
 pub fn handle(
-  router: Router(req, assigns, res),
-  routes: OrderedMap(Method, Service(req, assigns, res)),
-) -> Service(req, assigns, res) {
-  fn(req: Request(req, assigns)) -> Response(res) {
+  router: Router(req, assigns, session, res),
+  routes: OrderedMap(Method, Service(req, assigns, session, res)),
+) -> Service(req, assigns, session, res) {
+  fn(req: Request(req, assigns, session)) -> Response(res) {
     let method = req_to_method(req)
     let handler = ordered_map.get(routes, method)
 
@@ -279,10 +279,10 @@ pub fn handle(
 }
 
 pub fn to_routes(
-  router: Router(req, assigns, res),
-) -> OrderedMap(String, Route(req, assigns, res)) {
+  router: Router(req, assigns, session, res),
+) -> OrderedMap(String, Route(req, assigns, session, res)) {
   router.handlers
-  |> list.map(fn(route_handler: #(String, Handler(req, assigns, res))) {
+  |> list.map(fn(route_handler: #(String, Handler(req, assigns, session, res))) {
     let #(path, handler) = route_handler
     let service = case handler {
       ServiceHandler(routes) -> {
@@ -299,7 +299,7 @@ pub fn to_routes(
   })
 }
 
-fn req_to_method(req: Request(body, assigns)) {
+fn req_to_method(req: Request(body, assigns, session)) {
   case req.method {
     http.Get -> GET
     http.Post -> POST

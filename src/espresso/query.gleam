@@ -22,7 +22,7 @@ import gleam/option.{None, Option, Some}
 ///  }
 /// }
 /// ```
-pub fn get(req: Request(body, assigns), name: String) -> Option(String) {
+pub fn get(req: Request(body, assigns, session), name: String) -> Option(String) {
   let result =
     req
     |> request.get_query()

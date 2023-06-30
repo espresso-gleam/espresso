@@ -22,6 +22,11 @@ pub fn main() {
 }
 ```
 
+## Environment Variables
+
+- PORT: the port to run the service on
+- ESPRESSO_SIGNING_SECRET: the secret used to sign the session cookie
+
 ## Quick start
 
 ```sh

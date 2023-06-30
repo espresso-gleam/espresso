@@ -11,22 +11,29 @@ import gleam/result
 
 /// Services are functions that take a request and return a response.
 /// They are the core building block of web applications.
-pub type Service(in, assigns, out) =
-  fn(Request(in, assigns)) -> Response(out)
+pub type Service(in, assigns, session, out) =
+  fn(Request(in, assigns, session)) -> Response(out)
 
 /// Middleware are functions that take a before req/res and return a 
 /// new req/res. They are used to transform requests and responses.
-pub type Middleware(before_req, assigns, before_resp, after_req, after_resp) =
-  fn(Service(before_req, assigns, before_resp)) ->
-    Service(after_req, assigns, after_resp)
+pub type Middleware(
+  before_req,
+  assigns,
+  session,
+  before_resp,
+  after_req,
+  after_resp,
+) =
+  fn(Service(before_req, assigns, session, before_resp)) ->
+    Service(after_req, assigns, session, after_resp)
 
 /// A middleware that transforms the response body returned by the service using
 /// a given function.
 ///
 pub fn map_response_body(
-  service: Service(req, assigns, resp),
+  service: Service(req, assigns, session, resp),
   with mapper: fn(resp) -> b,
-) -> Service(req, assigns, b) {
+) -> Service(req, assigns, session, b) {
   fn(req) {
     req
     |> service
@@ -37,10 +44,10 @@ pub fn map_response_body(
 /// A middleware that prepends a header to the request.
 ///
 pub fn prepend_response_header(
-  service: Service(req, assigns, resp),
+  service: Service(req, assigns, session, resp),
   key: String,
   value: String,
-) -> Service(req, assigns, resp) {
+) -> Service(req, assigns, session, resp) {
   fn(req) {
     req
     |> service
@@ -48,7 +55,7 @@ pub fn prepend_response_header(
   }
 }
 
-fn ensure_post(req: Request(body, assigns)) {
+fn ensure_post(req: Request(body, assigns, session)) {
   case req.method {
     Post -> Ok(req)
     _ -> Error(Nil)
@@ -56,7 +63,7 @@ fn ensure_post(req: Request(body, assigns)) {
 }
 
 fn get_override_method(
-  request: Request(body, assigns),
+  request: Request(body, assigns, session),
 ) -> Result(http.Method, Nil) {
   use query_params <- result.then(request.get_query(request))
   use method <- result.then(list.key_find(query_params, "_method"))
@@ -82,8 +89,8 @@ fn get_override_method(
 ///    </form>
 ///
 pub fn method_override(
-  service: Service(req, assigns, resp),
-) -> Service(req, assigns, resp) {
+  service: Service(req, assigns, session, resp),
+) -> Service(req, assigns, session, resp) {
   fn(request) {
     request
     |> ensure_post
