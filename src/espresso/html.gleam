@@ -103,6 +103,6 @@ pub fn c(el: Element, new_children: Children) -> Element {
 }
 
 /// Adds a text node to an element
-pub fn txt(el: Element, text: String) -> Element {
-  c(el, [Text(text)])
+pub fn txt(text: String) -> Element {
+  Text(text)
 }
