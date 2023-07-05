@@ -1,12 +1,12 @@
 name = "espresso"
-version = "0.0.10"
+version = "0.0.11"
 description = "A simple gleam http server and router built on top of erlang cowboy"
 
 # Fill out these fields if you intend to generate HTML documentation or publish
 # your project to the Hex package manager.
 #
 licences = ["MIT"]
-repository = { type = "github", user = "nathanjohnson320", repo = "espresso" }
+repository = { type = "github", user = "espresso-gleam", repo = "espresso" }
 # links = [{ title = "Website", href = "https://gleam.run" }]
 links = []
 
