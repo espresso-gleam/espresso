@@ -38,21 +38,17 @@ pub type Request(body, assigns, session) {
 /// # Examples
 /// ```gleam
 /// import espresso/request.{Request}
+/// import gleam/result
 /// 
 /// fn handler(req: Request(a)) {
-///   let id = req |> request.get_param("id") |> option.unwrap("")
+///   let id = req |> request.get_param("id") |> result.unwrap("")
 /// }
 /// ```
 pub fn get_param(
   req: Request(body, assigns, session),
   name: String,
-) -> Option(String) {
-  let result = list.key_find(req.params, name)
-
-  case result {
-    Ok(value) -> Some(value)
-    Error(_) -> None
-  }
+) -> Result(String, Nil) {
+  list.key_find(req.params, name)
 }
 
 /// Return the uri that a request was sent to.
