@@ -60,11 +60,11 @@ pub type SessionState {
 pub type Session(session) =
   Result(session, SessionState)
 
-external fn to_binary(a) -> BitString =
-  "erlang" "term_to_binary"
+@external(erlang, "erlang", "term_to_binary")
+fn to_binary(a: a) -> BitString
 
-external fn to_term(BitString) -> a =
-  "erlang" "binary_to_term"
+@external(erlang, "erlang", "binary_to_term")
+fn to_term(a: BitString) -> a
 
 pub fn encode(session: Session(a)) -> Result(String, SessionState) {
   case session {

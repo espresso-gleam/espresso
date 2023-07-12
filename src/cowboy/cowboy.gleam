@@ -22,10 +22,10 @@ import gleam/result
 import gleam/map.{Map}
 
 /// An incoming request that will be handled by the dispatch in gleam_cowboy_native.erl
-pub external type CowboyRequest
+pub type CowboyRequest
 
 /// The returned result of cowboy_router:compile
-pub external type CowboyRouter
+pub type CowboyRouter
 
 /// A list of routes that will be compiled by cowboy_router:compile
 type CowboyRoutes =
@@ -45,23 +45,23 @@ pub type Route(req, assigns, session, res) {
 pub type Routes(req, assigns, session, res) =
   OrderedMap(String, Route(req, assigns, session, res))
 
-external type ModuleName
+type ModuleName
 
-external type CowboyStatic
+type CowboyStatic
 
-external type WebsocketModule
+type WebsocketModule
 
-external fn erlang_module_name() -> ModuleName =
-  "gleam_cowboy_native" "module_name"
+@external(erlang, "gleam_cowboy_native", "module_name")
+fn erlang_module_name() -> ModuleName
 
-external fn erlang_router(CowboyRoutes) -> CowboyRouter =
-  "gleam_cowboy_native" "router"
+@external(erlang, "gleam_cowboy_native", "router")
+fn erlang_router(a: CowboyRoutes) -> CowboyRouter
 
-external fn erlang_cowboy_static() -> CowboyStatic =
-  "gleam_cowboy_native" "static_module"
+@external(erlang, "gleam_cowboy_native", "static_module")
+fn erlang_cowboy_static() -> CowboyStatic
 
-external fn erlang_cowboy_websocket() -> WebsocketModule =
-  "gleam_websocket_native" "module_name"
+@external(erlang, "gleam_websocket_native", "module_name")
+fn erlang_cowboy_websocket() -> WebsocketModule
 
 /// Takes a list of route structures and compiles them into a cowboy router.
 /// 
@@ -107,22 +107,17 @@ pub fn router(routes: Routes(req, assigns, session, res)) -> CowboyRouter {
   erlang_router([#(underscore, list.append(cowboy_routes, fallback))])
 }
 
-external fn erlang_start_link(
-  router: CowboyRouter,
-  port: Int,
-) -> Result(Pid, Dynamic) =
-  "gleam_cowboy_native" "start_link"
+@external(erlang, "gleam_cowboy_native", "start_link")
+fn erlang_start_link(router router: CowboyRouter, port port: Int) -> Result(
+  Pid,
+  Dynamic,
+)
 
-external fn cowboy_reply(
-  Int,
-  Map(String, Dynamic),
-  res,
-  CowboyRequest,
-) -> CowboyRequest =
-  "cowboy_req" "reply"
+@external(erlang, "cowboy_req", "reply")
+fn cowboy_reply(a: Int, b: Map(String, Dynamic), c: res, d: CowboyRequest) -> CowboyRequest
 
-external fn erlang_get_method(CowboyRequest) -> Dynamic =
-  "cowboy_req" "method"
+@external(erlang, "cowboy_req", "method")
+fn erlang_get_method(a: CowboyRequest) -> Dynamic
 
 fn get_method(request) -> http.Method {
   request
@@ -131,8 +126,8 @@ fn get_method(request) -> http.Method {
   |> result.unwrap(http.Get)
 }
 
-external fn erlang_get_headers(CowboyRequest) -> Map(String, String) =
-  "cowboy_req" "headers"
+@external(erlang, "cowboy_req", "headers")
+fn erlang_get_headers(a: CowboyRequest) -> Map(String, String)
 
 fn get_headers(request) -> List(http.Header) {
   request
@@ -140,11 +135,11 @@ fn get_headers(request) -> List(http.Header) {
   |> map.to_list
 }
 
-external fn get_body(CowboyRequest) -> #(req, CowboyRequest) =
-  "gleam_cowboy_native" "read_entire_body"
+@external(erlang, "gleam_cowboy_native", "read_entire_body")
+fn get_body(a: CowboyRequest) -> #(req, CowboyRequest)
 
-external fn erlang_get_scheme(CowboyRequest) -> String =
-  "cowboy_req" "scheme"
+@external(erlang, "cowboy_req", "scheme")
+fn erlang_get_scheme(a: CowboyRequest) -> String
 
 fn get_scheme(request) -> http.Scheme {
   request
@@ -153,8 +148,8 @@ fn get_scheme(request) -> http.Scheme {
   |> result.unwrap(http.Http)
 }
 
-external fn erlang_get_query(CowboyRequest) -> String =
-  "cowboy_req" "qs"
+@external(erlang, "cowboy_req", "qs")
+fn erlang_get_query(a: CowboyRequest) -> String
 
 fn get_query(request) -> Option(String) {
   case erlang_get_query(request) {
@@ -163,14 +158,14 @@ fn get_query(request) -> Option(String) {
   }
 }
 
-external fn get_path(CowboyRequest) -> String =
-  "cowboy_req" "path"
+@external(erlang, "cowboy_req", "path")
+fn get_path(a: CowboyRequest) -> String
 
-external fn get_host(CowboyRequest) -> String =
-  "cowboy_req" "host"
+@external(erlang, "cowboy_req", "host")
+fn get_host(a: CowboyRequest) -> String
 
-external fn get_port(CowboyRequest) -> Int =
-  "cowboy_req" "port"
+@external(erlang, "cowboy_req", "port")
+fn get_port(a: CowboyRequest) -> Int
 
 fn proplist_get_all(input: List(#(a, b)), key: a) -> List(b) {
   list.filter_map(

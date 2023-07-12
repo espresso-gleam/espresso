@@ -22,5 +22,5 @@ pub fn get_session_secret() -> Result(String, Nil) {
   os.get_env("ESPRESSO_SIGNING_SECRET")
 }
 
-pub external fn exit(i32) -> Nil =
-  "erlang" "halt/1"
+@external(erlang, "erlang", "halt/1")
+pub fn exit(a: i32) -> Nil
