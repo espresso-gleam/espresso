@@ -6,6 +6,9 @@
 
 import gleam/string_builder.{StringBuilder, append, append_builder}
 import gleam/list
+import gleam/dynamic
+import gleam/result
+import gleam/io
 
 pub type Attributes =
   List(#(String, String))
@@ -105,4 +108,62 @@ pub fn c(el: Element, new_children: Children) -> Element {
 /// Adds a text node to an element
 pub fn txt(text: String) -> Element {
   Text(text)
+}
+
+fn attribute(d: dynamic.Dynamic) {
+  dynamic.tuple2(first: dynamic.string, second: dynamic.string)(d)
+}
+
+fn element(d: dynamic.Dynamic) {
+  dynamic.any(of: [
+    fn(x) {
+      x
+      |> dynamic.decode3(
+        Element,
+        dynamic.element(1, dynamic.string),
+        dynamic.element(2, dynamic.list(of: attribute)),
+        dynamic.element(3, dynamic.list(of: element)),
+      )
+    },
+    fn(x) {
+      x
+      |> dynamic.decode1(Text, dynamic.element(1, dynamic.string))
+    },
+  ])(d)
+}
+
+fn decode_dyn() {
+  dynamic.any(of: [
+    fn(x) {
+      x
+      |> dynamic.string()
+      |> result.map(fn(text) { [Text(text)] })
+    },
+    fn(x) {
+      x
+      |> element()
+      |> result.map(fn(element) { [element] })
+    },
+    fn(x) {
+      x
+      |> dynamic.list(of: element)
+      |> result.map(fn(elements) { elements })
+    },
+  ])
+}
+
+pub fn dyn(el: Element, dyn) -> Element {
+  let children_result =
+    dyn
+    |> dynamic.from()
+    |> decode_dyn()
+
+  case children_result {
+    Ok(children) -> c(el, children)
+    Error(error) -> {
+      io.println_error("ERROR:")
+      io.debug(error)
+      c(el, [txt("There was a problem parsing this dyn")])
+    }
+  }
 }
