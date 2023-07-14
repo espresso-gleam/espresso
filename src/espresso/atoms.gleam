@@ -7,4 +7,7 @@ pub type ElementAtom {
 }
 
 @external(erlang, "espresso_atoms", "decode_atom")
-pub fn decode(a: dynamic.Dynamic) -> Result(ElementAtom, List(dynamic.DecodeError))
+pub fn decode(a: dynamic.Dynamic) -> Result(
+  ElementAtom,
+  List(dynamic.DecodeError),
+)
