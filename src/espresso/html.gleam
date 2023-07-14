@@ -8,7 +8,9 @@ import gleam/string_builder.{StringBuilder, append, append_builder}
 import gleam/list
 import gleam/dynamic
 import gleam/result
+import gleam/string
 import gleam/io
+import espresso/atoms
 
 pub type Attributes =
   List(#(String, String))
@@ -16,6 +18,7 @@ pub type Attributes =
 pub type Element {
   Text(text: String)
   Element(tag_name: String, attributes: Attributes, children: Children)
+  Raw(text: String)
 }
 
 type Children =
@@ -31,9 +34,10 @@ pub fn new(
 
 pub fn render(element: Element) -> StringBuilder {
   case element {
-    Text(text) ->
+    Raw(text) ->
       string_builder.new()
       |> append(text)
+    Text(text) -> escape(string_builder.new(), text)
     Element(tag_name, attributes, children) -> {
       string_builder.new()
       |> append("<" <> tag_name)
@@ -41,6 +45,27 @@ pub fn render(element: Element) -> StringBuilder {
       |> append(">")
       |> render_children(children)
       |> append("</" <> tag_name <> ">")
+    }
+  }
+}
+
+pub fn escape(acc: StringBuilder, text: String) -> StringBuilder {
+  // originally from https://gitlab.com/Nicd/glentities/-/blob/v4.0.1/src/glentities.gleam#L2327
+  // modified to have a StringBuilder accumulator and not deal with output string
+  case text {
+    "" -> acc
+    "&" <> rest -> escape(string_builder.append(acc, "&amp;"), rest)
+    "<" <> rest -> escape(string_builder.append(acc, "&lt;"), rest)
+    ">" <> rest -> escape(string_builder.append(acc, "&gt;"), rest)
+    "\"" <> rest -> escape(string_builder.append(acc, "&quot;"), rest)
+    "'" <> rest -> escape(string_builder.append(acc, "&#39;"), rest)
+    other -> {
+      let maybe_grapheme = string.pop_grapheme(other)
+      case maybe_grapheme {
+        Ok(#(grapheme, rest)) ->
+          escape(string_builder.append(acc, grapheme), rest)
+        Error(Nil) -> acc
+      }
     }
   }
 }
@@ -60,7 +85,12 @@ fn render_attributes(builder: StringBuilder, attributes: Attributes) {
     fn(builder, attribute) {
       let #(key, value) = attribute
 
-      append(builder, " " <> key <> "=\"" <> value <> "\"")
+      builder
+      |> append(" ")
+      |> append(key)
+      |> append("=\"")
+      |> escape(value)
+      |> append("\"")
     },
   )
 }
@@ -110,12 +140,17 @@ pub fn txt(text: String) -> Element {
   Text(text)
 }
 
+pub fn raw(text: String) -> Element {
+  Raw(text)
+}
+
 fn attribute(d: dynamic.Dynamic) {
   dynamic.tuple2(first: dynamic.string, second: dynamic.string)(d)
 }
 
 fn element(d: dynamic.Dynamic) {
-  dynamic.any(of: [
+  d
+  |> dynamic.any(of: [
     fn(x) {
       x
       |> dynamic.decode3(
@@ -126,10 +161,25 @@ fn element(d: dynamic.Dynamic) {
       )
     },
     fn(x) {
-      x
-      |> dynamic.decode1(Text, dynamic.element(1, dynamic.string))
+      case dynamic.element(0, atoms.decode)(x) {
+        Ok(atom) -> {
+          case atom {
+            atoms.Raw ->
+              x
+              |> dynamic.decode1(Raw, dynamic.element(1, dynamic.string))
+            atoms.Text ->
+              x
+              |> dynamic.decode1(Text, dynamic.element(1, dynamic.string))
+            _ -> Error([])
+          }
+        }
+
+        _ -> {
+          Error([])
+        }
+      }
     },
-  ])(d)
+  ])
 }
 
 fn decode_dyn() {
