@@ -126,7 +126,8 @@ fn attribute(d: dynamic.Dynamic) {
 }
 
 fn element(d: dynamic.Dynamic) {
-  dynamic.any(of: [
+  d
+  |> dynamic.any(of: [
     fn(x) {
       x
       |> dynamic.decode3(
@@ -155,11 +156,7 @@ fn element(d: dynamic.Dynamic) {
         }
       }
     },
-  ])(
-    // x
-    // |> dynamic.decode1(Text, dynamic.element(1, dynamic.string))
-    d,
-  )
+  ])
 }
 
 fn decode_dyn() {
