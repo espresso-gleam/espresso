@@ -17,7 +17,6 @@ gleam_json = "~> 0.5"
 gleam_otp = "~> 0.3"
 cowboy = "~> 2.0"
 gleam_crypto = "~> 0.3"
-glentities = "~> 4.0"
 
 [dev-dependencies]
 gleeunit = "~> 0.10"

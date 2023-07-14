@@ -8,9 +8,9 @@ import gleam/string_builder.{StringBuilder, append, append_builder}
 import gleam/list
 import gleam/dynamic
 import gleam/result
+import gleam/string
 import gleam/io
 import espresso/atoms
-import glentities
 
 pub type Attributes =
   List(#(String, String))
@@ -37,10 +37,7 @@ pub fn render(element: Element) -> StringBuilder {
     Raw(text) ->
       string_builder.new()
       |> append(text)
-    Text(text) ->
-      text
-      |> glentities.encode_html_body(string_builder.new())
-      |> string_builder.from_string()
+    Text(text) -> escape(string_builder.new(), text)
     Element(tag_name, attributes, children) -> {
       string_builder.new()
       |> append("<" <> tag_name)
@@ -48,6 +45,27 @@ pub fn render(element: Element) -> StringBuilder {
       |> append(">")
       |> render_children(children)
       |> append("</" <> tag_name <> ">")
+    }
+  }
+}
+
+pub fn escape(acc: StringBuilder, text: String) -> StringBuilder {
+  // originally from https://gitlab.com/Nicd/glentities/-/blob/v4.0.1/src/glentities.gleam#L2327
+  // modified to have a StringBuilder accumulator and not deal with output string
+  case text {
+    "" -> acc
+    "&" <> rest -> escape(string_builder.append(acc, "&amp;"), rest)
+    "<" <> rest -> escape(string_builder.append(acc, "&lt;"), rest)
+    ">" <> rest -> escape(string_builder.append(acc, "&gt;"), rest)
+    "\"" <> rest -> escape(string_builder.append(acc, "&quot;"), rest)
+    "'" <> rest -> escape(string_builder.append(acc, "&#39;"), rest)
+    other -> {
+      let maybe_grapheme = string.pop_grapheme(other)
+      case maybe_grapheme {
+        Ok(#(grapheme, rest)) ->
+          escape(string_builder.append(acc, grapheme), rest)
+        Error(Nil) -> acc
+      }
     }
   }
 }
@@ -67,7 +85,12 @@ fn render_attributes(builder: StringBuilder, attributes: Attributes) {
     fn(builder, attribute) {
       let #(key, value) = attribute
 
-      append(builder, " " <> key <> "=\"" <> value <> "\"")
+      builder
+      |> append(" ")
+      |> append(key)
+      |> append("=\"")
+      |> escape(value)
+      |> append("\"")
     },
   )
 }
