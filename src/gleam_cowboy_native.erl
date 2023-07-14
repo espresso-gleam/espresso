@@ -2,7 +2,14 @@
 % https://github.com/gleam-lang/cowboy/blob/83e2f20170e4a73e5499238149313f8329a2f41a/src/gleam_cowboy_native.erl
 -module(gleam_cowboy_native).
 
--export([init/2, start_link/2, read_entire_body/1, router/1, module_name/0, static_module/0]).
+-export([
+    init/2,
+    start_link/2,
+    read_entire_body/1,
+    router/1,
+    module_name/0,
+    static_module/0
+]).
 
 module_name() ->
     ?MODULE.

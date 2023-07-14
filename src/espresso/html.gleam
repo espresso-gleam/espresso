@@ -9,6 +9,8 @@ import gleam/list
 import gleam/dynamic
 import gleam/result
 import gleam/io
+import espresso/atoms
+import glentities
 
 pub type Attributes =
   List(#(String, String))
@@ -16,6 +18,7 @@ pub type Attributes =
 pub type Element {
   Text(text: String)
   Element(tag_name: String, attributes: Attributes, children: Children)
+  Raw(text: String)
 }
 
 type Children =
@@ -31,9 +34,13 @@ pub fn new(
 
 pub fn render(element: Element) -> StringBuilder {
   case element {
-    Text(text) ->
+    Raw(text) ->
       string_builder.new()
       |> append(text)
+    Text(text) ->
+      text
+      |> glentities.encode_html_body(string_builder.new())
+      |> string_builder.from_string()
     Element(tag_name, attributes, children) -> {
       string_builder.new()
       |> append("<" <> tag_name)
@@ -110,6 +117,10 @@ pub fn txt(text: String) -> Element {
   Text(text)
 }
 
+pub fn raw(text: String) -> Element {
+  Raw(text)
+}
+
 fn attribute(d: dynamic.Dynamic) {
   dynamic.tuple2(first: dynamic.string, second: dynamic.string)(d)
 }
@@ -126,10 +137,29 @@ fn element(d: dynamic.Dynamic) {
       )
     },
     fn(x) {
-      x
-      |> dynamic.decode1(Text, dynamic.element(1, dynamic.string))
+      case dynamic.element(0, atoms.decode)(x) {
+        Ok(atom) -> {
+          case atom {
+            atoms.Raw ->
+              x
+              |> dynamic.decode1(Raw, dynamic.element(1, dynamic.string))
+            atoms.Text ->
+              x
+              |> dynamic.decode1(Text, dynamic.element(1, dynamic.string))
+            _ -> Error([])
+          }
+        }
+
+        _ -> {
+          Error([])
+        }
+      }
     },
-  ])(d)
+  ])(
+    // x
+    // |> dynamic.decode1(Text, dynamic.element(1, dynamic.string))
+    d,
+  )
 }
 
 fn decode_dyn() {
