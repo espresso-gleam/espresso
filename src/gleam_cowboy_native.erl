@@ -8,7 +8,8 @@
     read_entire_body/1,
     router/1,
     module_name/0,
-    static_module/0
+    static_module/0,
+    parse_query_string/1
 ]).
 
 module_name() ->
@@ -55,3 +56,20 @@ read_entire_body(Body, Req0) ->
         {ok, Chunk, Req1} -> {list_to_binary([Body, Chunk]), Req1};
         {more, Chunk, Req1} -> read_entire_body([Body, Chunk], Req1)
     end.
+
+parse_query_string(Query) ->
+    QS = uri_string:dissect_query(Query),
+    ProcessedQS = lists:map(
+        fun({K, V}) ->
+            {K,
+                try
+                    list_to_integer(binary_to_list(V))
+                catch
+                    _:_ -> V
+                end}
+        end,
+        QS
+    ),
+    maps:from_list(
+        ProcessedQS
+    ).
