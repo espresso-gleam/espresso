@@ -1,9 +1,11 @@
 // This is a fork of https://github.com/gleam-lang/http/blob/main/src/gleam/http/request.gleam
 // it has additional things like "Params"
 import espresso/session.{Session}
+import gleam/dynamic
 import gleam/http.{Get, Header, Method, Scheme}
 import gleam/http/cookie
 import gleam/list
+import gleam/map.{Map}
 import gleam/option.{None, Option, Some}
 import gleam/result
 import gleam/string
@@ -30,6 +32,8 @@ pub type Request(body, assigns, session) {
     params: Params,
     assigns: Option(assigns),
     session: Session(session),
+    raw: dynamic.Dynamic,
+    files: Map(String, String),
   )
 }
 
@@ -90,6 +94,8 @@ pub fn from_uri(uri: Uri) -> Result(Request(String, assigns, session), Nil) {
       params: [],
       assigns: None,
       session: Error(session.Unset),
+      raw: dynamic.from(""),
+      files: map.new(),
     )
   Ok(req)
 }
@@ -148,6 +154,8 @@ pub fn set_body(
     params: params,
     assigns: assigns,
     session: session,
+    raw: raw,
+    files: files,
     ..,
   ) = req
   Request(
@@ -162,6 +170,8 @@ pub fn set_body(
     params: params,
     assigns: assigns,
     session: session,
+    raw: raw,
+    files: files,
   )
 }
 
@@ -238,6 +248,8 @@ pub fn new() -> Request(String, assigns, session) {
     params: [],
     assigns: None,
     session: Error(session.Unset),
+    raw: dynamic.from(""),
+    files: map.new(),
   )
 }
 

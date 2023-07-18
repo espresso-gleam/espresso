@@ -22,5 +22,8 @@ pub fn get_session_secret() -> Result(String, Nil) {
   os.get_env("ESPRESSO_SIGNING_SECRET")
 }
 
-@external(erlang, "erlang", "halt/1")
+@external(erlang, "erlang", "halt")
 pub fn exit(a: i32) -> Nil
+
+@external(erlang, "espresso_files", "read")
+pub fn read_file(path: String) -> String

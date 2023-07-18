@@ -33,3 +33,26 @@ pub fn start(r: Router(req, assigns, session, res)) {
     Error(_) -> exit(1)
   }
 }
+
+import espresso/request.{Request}
+import espresso/response.{send}
+import gleam/io
+import gleam/map
+
+pub fn main() {
+  let router =
+    router.new()
+    |> router.post(
+      "/",
+      fn(req: Request(BitString, assigns, session)) {
+        case map.get(req.files, "license") {
+          Ok(path) -> {
+            send(200, system.read_file(path))
+          }
+          Error(_) -> send(500, "Error saving file")
+        }
+      },
+    )
+
+  start(router)
+}

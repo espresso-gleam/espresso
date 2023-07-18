@@ -135,7 +135,7 @@ fn get_headers(request) -> List(http.Header) {
   |> map.to_list
 }
 
-@external(erlang, "gleam_cowboy_native", "read_entire_body")
+@external(erlang, "gleam_cowboy_native", "read_body")
 fn get_body(a: CowboyRequest) -> #(req, CowboyRequest)
 
 @external(erlang, "cowboy_req", "scheme")
@@ -196,6 +196,7 @@ fn service_to_handler(
 ) -> fn(CowboyRequest, Params) -> CowboyRequest {
   fn(request, params) {
     let #(body, request) = get_body(request)
+    let files = get_files(request)
     let response =
       Request(
         body: body,
@@ -209,6 +210,8 @@ fn service_to_handler(
         params: params,
         assigns: None,
         session: Error(session.Unset),
+        raw: dynamic.from(request),
+        files: files,
       )
       |> request.load_session()
       |> service()
@@ -225,3 +228,6 @@ fn service_to_handler(
 pub fn start(router: CowboyRouter, on_port number: Int) -> Result(Pid, Dynamic) {
   erlang_start_link(router, number)
 }
+
+@external(erlang, "gleam_cowboy_native", "get_files")
+pub fn get_files(req: CowboyRequest) -> Map(String, String)
